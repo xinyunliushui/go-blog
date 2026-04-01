@@ -1,0 +1,14 @@
+{
+    "go.useLanguageServer": true,
+    "gopls": {
+        "completeUnimported": true,  // 支持未导入包的自动补全
+        "usePlaceholders": true,      // 在函数补全时插入参数占位符
+        "analyses": {
+            "unusedparams": true      // 检查未使用的参数
+        }
+    },
+    "go.formatTool": "goimports",      // 使用goimports进行格式化
+    "go.alternateTools": {
+        // 如果你的goimports安装在其他路径，可以在这里指定
+    }
+}
