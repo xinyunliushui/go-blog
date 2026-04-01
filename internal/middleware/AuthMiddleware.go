@@ -2,13 +2,13 @@
  * @Date: 2026-03-31 17:07:35
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-03-31 23:47:56
+ * @LastEditTime: 2026-04-01 20:49:57
  * @Description: gin-jwt认证中间件
  */
 package middleware
 
 import (
-	"fmt"
+	"errors"
 	"go-blog/internal/config"
 	"go-blog/internal/model"
 	"go-blog/internal/repository"
@@ -25,20 +25,20 @@ import (
 // 初始化jwt中间件
 func InitAuth() (*jwt.GinJWTMiddleware, error) {
 	authMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
-		Realm:           config.Config.Jwt.Realm,                                            // jwt标识
-		Key:             []byte(config.Config.Jwt.Key),                                      // 服务端密钥
-		Timeout:         time.Hour * time.Duration(config.Config.Jwt.Timeout),               // token过期时间
-		MaxRefresh:      time.Hour * time.Duration(config.Config.Jwt.MaxRefresh),            // token最大刷新时间(RefreshToken过期时间=Timeout+MaxRefresh)
-		PayloadFunc:     payloadFunc,                                                        // 有效载荷处理
-		IdentityHandler: identityHandler,                                                    // 解析Claims
-		Authenticator:   login,                                                              // 校验token的正确性, 处理登录逻辑
-		Authorizator:    authorizator,                                                       // 用户登录校验成功处理
-		Unauthorized:    unauthorized,                                                       // 用户登录校验失败处理
-		LoginResponse:   loginResponse,                                                      // 登录成功后的响应
-		LogoutResponse:  logoutResponse,                                                     // 登出后的响应
-		RefreshResponse: refreshResponse,                                                    // 刷新token后的响应
-		TokenLookup:     "header: Authorization, query: access_token, cookie: access_token", // 自动在这几个地方寻找请求中的token
-		TokenHeadName:   "Bearer",                                                           // header名称
+		Realm:           config.Config.Jwt.Realm,                                 // jwt标识
+		Key:             []byte(config.Config.Jwt.Key),                           // 服务端密钥
+		Timeout:         time.Hour * time.Duration(config.Config.Jwt.Timeout),    // token过期时间
+		MaxRefresh:      time.Hour * time.Duration(config.Config.Jwt.MaxRefresh), // token最大刷新时间(RefreshToken过期时间=Timeout+MaxRefresh)
+		PayloadFunc:     payloadFunc,                                             // 有效载荷处理
+		IdentityHandler: identityHandler,                                         // 解析Claims
+		Authenticator:   login,                                                   // 校验token的正确性, 处理登录逻辑
+		Authorizator:    authorizator,                                            // 用户登录校验成功处理
+		Unauthorized:    unauthorized,                                            // 用户登录校验失败处理
+		LoginResponse:   loginResponse,                                           // 登录成功后的响应
+		LogoutResponse:  logoutResponse,                                          // 登出后的响应
+		RefreshResponse: refreshResponse,                                         // 刷新token后的响应
+		TokenLookup:     "header: Authorization, query: jwt, cookie: jwt",        // 自动在这几个地方寻找请求中的token
+		TokenHeadName:   "Bearer",                                                // header名称
 		TimeFunc:        time.Now,
 	})
 	return authMiddleware, err
@@ -90,7 +90,7 @@ func login(c *gin.Context) (interface{}, error) {
 	userRepository := repository.NewUserRepository()
 	user, err := userRepository.Login(u)
 	if err != nil {
-		return nil, jwt.ErrFailedAuthentication
+		return nil, errors.New("用户名或密码不正确")
 	}
 	// 重要 将用户以json格式写入, payloadFunc/authorizator会使用到
 	return map[string]interface{}{
@@ -100,12 +100,12 @@ func login(c *gin.Context) (interface{}, error) {
 
 // 用户登录校验成功处理
 func authorizator(data interface{}, c *gin.Context) bool {
-	fmt.Printf("login data: %v", data)
 	if v, ok := data.(map[string]interface{}); ok {
 		userStr := v["user"].(string)
 		var user model.User
 		// 将用户json转为结构体
 		utils.Json2Struct(userStr, &user)
+		// 将用户保存到context, api调用时取数据方便
 		c.Set("user", user)
 		return true
 	}
@@ -121,14 +121,10 @@ func unauthorized(c *gin.Context, code int, message string) {
 // 登录成功后的响应
 func loginResponse(c *gin.Context, code int, token string, expires time.Time) {
 	maxAgeSeconds := int((time.Hour * time.Duration(config.Config.Jwt.Timeout)).Seconds())
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     "access_token",
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-		Expires:  expires,
-		MaxAge:   maxAgeSeconds,
-	})
+	secure := c.Request.TLS != nil // 是否https下传输
+	// 本地开发客户端为 127.0.0.1:3000 时，Domain 不能带端口，且 HTTP 下避免 SameSite=None 被拦截
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("jwt", token, maxAgeSeconds, "/", "", secure, true)
 	response.Success(c,
 		gin.H{
 			"token":   token,

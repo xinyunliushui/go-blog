@@ -2,7 +2,7 @@
  * @Date: 2026-03-23 21:59:35
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-03-31 17:12:37
+ * @LastEditTime: 2026-04-01 08:58:16
  * @Description:
  */
 package config
@@ -17,8 +17,8 @@ var Config = struct {
 	Application struct {
 		Port            int    `default:"8080"`
 		UrlPathPrefix   string `yaml:"url_path_prefix" default:"/"`
-		RSAPublicBytes  []byte `yaml:"rsa_public_key"`
-		RSAPrivateBytes []byte `yaml:"rsa_private_key"`
+		RSAPublicBytes  string `yaml:"rsa_public_key"`
+		RSAPrivateBytes string `yaml:"rsa_private_key"`
 	}
 	Mysql struct {
 		Username    string

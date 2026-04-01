@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:11:30
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-03-31 21:28:08
+ * @LastEditTime: 2026-04-01 10:41:58
  * @Description: routes
  */
 package routes
@@ -23,7 +23,6 @@ func InitRoutes() {
 
 	// api分组
 	apiGroup := router.Group("/" + config.Config.Application.UrlPathPrefix)
-
 	// 初始化JWT认证中间件
 	authMiddleware, err := middleware.InitAuth()
 	if err != nil {
@@ -35,7 +34,7 @@ func InitRoutes() {
 	InitAuthRoutes(apiGroup, authMiddleware)
 
 	// 注册用户路由
-	InitUserRoutes(apiGroup)
+	InitUserRoutes(apiGroup, authMiddleware)
 
 	// 启动
 	router.Run(":8080")
