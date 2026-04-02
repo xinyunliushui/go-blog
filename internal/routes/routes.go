@@ -36,6 +36,9 @@ func InitRoutes() {
 	// 注册用户路由
 	InitUserRoutes(apiGroup, authMiddleware)
 
+	// 注册角色路由
+	InitRoleRoutes(apiGroup, authMiddleware)
+
 	// 启动
 	router.Run(":8080")
 }

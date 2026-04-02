@@ -47,11 +47,10 @@ func CasbinMiddleware() gin.HandlerFunc {
 
 		isPass := check(subs, obj, act)
 		if !isPass {
-			response.Response(c, 401, 401, nil, "没有权限")
+			response.Response(c, 403, 403, nil, "禁止访问")
 			c.Abort()
 			return
 		}
-
 		c.Next()
 	}
 }

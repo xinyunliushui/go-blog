@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:07:36
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-01 22:28:08
+ * @LastEditTime: 2026-04-02 22:17:24
  * @Description: user routes
  */
 package routes
@@ -23,7 +23,7 @@ func InitUserRoutes(apiGroup *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddlew
 	// 启用Casbin中间件（进行权限认证）
 	userRouter.Use(middleware.CasbinMiddleware())
 	{
-		userRouter.GET("/users", userController.GetUsers)
+		userRouter.GET("/list", userController.GetUsers)
 		userRouter.GET("/userInfo", userController.GetUserInfo)
 	}
 	return apiGroup

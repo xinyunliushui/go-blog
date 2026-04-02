@@ -1,3 +1,10 @@
+/*
+ * @Date: 2026-04-01 22:02:21
+ * @Author: zhongwenhao
+ * @LastEditors: zhongwenhao
+ * @LastEditTime: 2026-04-01 23:09:27
+ * @Description: 初始化管理员用户和角色策略
+ */
 package common
 
 import (
@@ -19,8 +26,8 @@ func InitAdmin(db *gorm.DB, enforcer *casbin.Enforcer) {
 				Name:    "管理员",
 				Keyword: "role_admin",
 				Desc:    new(string),
-				Sort:    1,
-				Status:  1,
+				Sort:    1, // 排序越大权限越低
+				Status:  1, // 正常
 				Creator: "系统",
 			},
 		}

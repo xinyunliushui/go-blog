@@ -19,6 +19,8 @@ var Config = struct {
 		UrlPathPrefix   string `yaml:"url_path_prefix" default:"/"`
 		RSAPublicBytes  string `yaml:"rsa_public_key"`
 		RSAPrivateBytes string `yaml:"rsa_private_key"`
+		// 非空时仅允许列表内 Origin 携带凭证跨域；为空则回显请求 Origin（勿在生产依赖此行为）
+		CorsAllowOrigins []string `yaml:"cors_allow_origins"`
 	}
 	Mysql struct {
 		Username    string

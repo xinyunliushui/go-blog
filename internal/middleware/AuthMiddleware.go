@@ -16,6 +16,7 @@ import (
 	"go-blog/internal/utils"
 	"go-blog/internal/vo"
 	"net/http"
+	"strings"
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
@@ -118,11 +119,18 @@ func unauthorized(c *gin.Context, code int, message string) {
 	response.Response(c, code, code, nil, message)
 }
 
+func requestIsHTTPS(c *gin.Context) bool {
+	if c.Request.TLS != nil {
+		return true
+	}
+	return strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https")
+}
+
 // 登录成功后的响应
 func loginResponse(c *gin.Context, code int, token string, expires time.Time) {
 	maxAgeSeconds := int((time.Hour * time.Duration(config.Config.Jwt.Timeout)).Seconds())
-	secure := c.Request.TLS != nil // 是否https下传输
-	// 本地开发客户端为 127.0.0.1:3000 时，Domain 不能带端口，且 HTTP 下避免 SameSite=None 被拦截
+	secure := requestIsHTTPS(c)
+	// 与 SPA 同机开发时请用 localhost 访问前后端，避免 localhost 与 127.0.0.1 混用导致浏览器不写 Cookie
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("jwt", token, maxAgeSeconds, "/", "", secure, true)
 	response.Success(c,
