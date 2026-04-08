@@ -24,6 +24,7 @@ func InitUserRoutes(apiGroup *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddlew
 	userRouter.Use(middleware.CasbinMiddleware())
 	{
 		userRouter.GET("/list", userController.GetUsers)
+		userRouter.GET("/info", userController.GetUserInfo)
 		userRouter.GET("/userInfo", userController.GetUserInfo)
 	}
 	return apiGroup

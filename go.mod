@@ -11,6 +11,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/jinzhu/configor v1.2.2
+	github.com/thoas/go-funk v0.9.3
 	golang.org/x/crypto v0.48.0
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/gorm v1.31.1

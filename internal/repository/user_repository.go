@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:44:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-02 21:52:35
+ * @LastEditTime: 2026-04-03 14:59:39
  * @Description: repository layer for user
  */
 package repository
@@ -20,8 +20,9 @@ import (
 type IUserRepository interface {
 	Login(user *model.User) (*model.User, error) // 登录
 	// GetUsers 分页查询；status 为 nil 时不按状态筛选
-	GetUsers(req *vo.UserListRequest) ([]*model.User, int64, error)
+	GetUsers(req *vo.UserListRequest) ([]model.User, int64, error)
 	GetCurrentUser(c *gin.Context) (model.User, error) // 获取当前登录用户信息
+	GetUserById(id uint) (model.User, error)           // 获取单个用户信息
 }
 
 type UserRepository struct {
@@ -31,9 +32,9 @@ func NewUserRepository() IUserRepository {
 	return UserRepository{}
 }
 
-func (ur UserRepository) GetUsers(req *vo.UserListRequest) ([]*model.User, int64, error) {
+func (ur UserRepository) GetUsers(req *vo.UserListRequest) ([]model.User, int64, error) {
 
-	var list []*model.User
+	var list []model.User
 	db := common.DB.Model(&model.User{}).Order("created_at DESC")
 
 	// username := strings.TrimSpace(req.Username)
@@ -99,6 +100,18 @@ func (ur UserRepository) GetCurrentUser(c *gin.Context) (model.User, error) {
 	if !exist {
 		return newUser, errors.New("用户未登录")
 	}
+	//  参数判断
 	u, _ := ctxUser.(model.User)
-	return u, nil
+	user, err := ur.GetUserById(u.ID)
+	if err != nil {
+		return newUser, err
+	}
+	return user, err
+}
+
+// 获取单个用户信息
+func (ur UserRepository) GetUserById(id uint) (model.User, error) {
+	var user model.User
+	err := common.DB.Where("id = ?", id).Preload("Roles").First(&user).Error
+	return user, err
 }

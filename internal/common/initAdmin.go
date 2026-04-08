@@ -2,7 +2,7 @@
  * @Date: 2026-04-01 22:02:21
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-01 23:09:27
+ * @LastEditTime: 2026-04-03 15:22:53
  * @Description: 初始化管理员用户和角色策略
  */
 package common
@@ -33,9 +33,15 @@ func InitAdmin(db *gorm.DB, enforcer *casbin.Enforcer) {
 		}
 		// 用户不存在，创建新管理员
 		admin = model.User{
-			Username: "admin",
-			Password: "admin123",
-			Roles:    role[:1], // 可选角色字段，用于业务逻辑
+			Username:     "admin",
+			Password:     "admin123",
+			Mobile:       "18888888888",
+			Avatar:       "https://gips1.baidu.com/it/u=1397155327,2622199615&fm=3074&app=3074&f=PNG?w=2048&h=2048",
+			Nickname:     "动物园园长",
+			Introduction: "系统默认管理员",
+			Status:       1,
+			Creator:      "系统",
+			Roles:        role[:1], // 可选角色字段，用于业务逻辑
 		}
 		if err := db.Create(&admin).Error; err != nil {
 			log.Fatalf("创建管理员用户失败: %v", err)
