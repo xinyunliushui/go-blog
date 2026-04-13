@@ -2,7 +2,7 @@
  * @Date: 2026-03-27 21:51:44
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-02 17:41:46
+ * @LastEditTime: 2026-04-13 16:38:39
  * @Description: validator
  */
 package common
@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/gin-gonic/gin/binding"
@@ -69,9 +70,18 @@ func InitValidator() {
 	// registerTagNameFunc(Validate)
 	// _ = ch_translations.RegisterDefaultTranslations(Validate, Trans)
 
+	// 注册手机号校验
+	_ = Validate.RegisterValidation("checkMobile", checkMobile)
+
 	// Gin ShouldBind/ShouldBindJSON 等使用 binding 内置引擎，需单独注册翻译与 TagName
 	if gv, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		registerTagNameFunc(gv)
 		_ = ch_translations.RegisterDefaultTranslations(gv, Trans)
 	}
+}
+
+func checkMobile(fl validator.FieldLevel) bool {
+	reg := `^1([38][0-9]|14[579]|5[^4]|16[6]|7[1-35-8]|9[189])\d{8}$`
+	rgx := regexp.MustCompile(reg)
+	return rgx.MatchString(fl.Field().String())
 }

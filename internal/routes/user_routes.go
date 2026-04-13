@@ -26,6 +26,7 @@ func InitUserRoutes(apiGroup *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddlew
 		userRouter.GET("/list", userController.GetUsers)
 		userRouter.GET("/info", userController.GetUserInfo)
 		userRouter.GET("/userInfo", userController.GetUserInfo)
+		userRouter.POST("/create", userController.CreateUser)
 	}
 	return apiGroup
 }

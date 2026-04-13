@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:11:30
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-01 10:41:58
+ * @LastEditTime: 2026-04-13 10:45:28
  * @Description: routes
  */
 package routes
@@ -38,6 +38,9 @@ func InitRoutes() {
 
 	// 注册角色路由
 	InitRoleRoutes(apiGroup, authMiddleware)
+
+	// 注册菜单路由
+	InitMenuRoutes(apiGroup, authMiddleware)
 
 	// 启动
 	router.Run(":8080")

@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:44:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-03 14:59:39
+ * @LastEditTime: 2026-04-09 09:49:24
  * @Description: repository layer for user
  */
 package repository
@@ -23,6 +23,7 @@ type IUserRepository interface {
 	GetUsers(req *vo.UserListRequest) ([]model.User, int64, error)
 	GetCurrentUser(c *gin.Context) (model.User, error) // 获取当前登录用户信息
 	GetUserById(id uint) (model.User, error)           // 获取单个用户信息
+	CreateUser(user *model.User) error                 // 创建用户
 }
 
 type UserRepository struct {
@@ -114,4 +115,9 @@ func (ur UserRepository) GetUserById(id uint) (model.User, error) {
 	var user model.User
 	err := common.DB.Where("id = ?", id).Preload("Roles").First(&user).Error
 	return user, err
+}
+
+func (ur UserRepository) CreateUser(user *model.User) error {
+	err := common.DB.Create(user).Error
+	return err
 }

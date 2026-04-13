@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 21:57:13
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-02 22:13:43
+ * @LastEditTime: 2026-04-13 16:29:19
  * @Description: value object for user request
  */
 package vo
@@ -17,4 +17,14 @@ type RegisterAndLoginRequest struct {
 type UserListRequest struct {
 	PaginationRequest
 	Status uint `json:"status" form:"status"`
+}
+
+// 创建用户结构体
+type CreateUserRequest struct {
+	Username     string `form:"username" json:"username" validate:"required,min=2,max=20"`
+	Password     string `form:"password" json:"password"`
+	Mobile       string `form:"mobile" json:"mobile" validate:"required,checkMobile"`
+	Avatar       string `form:"avatar" json:"avatar"`
+	Nickname     string `form:"nickname" json:"nickname" validate:"min=0,max=20"`
+	Introduction string `form:"introduction" json:"introduction" validate:"min=0,max=255"`
 }

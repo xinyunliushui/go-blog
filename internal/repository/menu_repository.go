@@ -2,20 +2,25 @@
  * @Date: 2026-04-08 21:28:24
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-08 21:56:29
+ * @LastEditTime: 2026-04-13 15:18:04
  * @Description: 菜单仓库
  */
 package repository
 
 import (
 	"go-blog/internal/common"
+	"go-blog/internal/dto"
 	"go-blog/internal/model"
 
 	"github.com/thoas/go-funk"
 )
 
 type IMenuRepository interface {
-	GetUserMenuTreeByUserId(userId uint) ([]*model.Menu, error) // 根据用户ID获取用户的权限(可访问)菜单树
+	GetMenus() ([]*model.Menu, error)                           // 获取菜单列表
+	GetMenuTree() ([]dto.MenuDto, error)                        // 获取菜单树
+	CreateMenu(menu *model.Menu) error                          // 创建菜单
+	UpdateMenuById(menuId uint, menu *model.Menu) error         // 更新菜单
+	GetUserMenuTreeByUserId(userId uint) ([]dto.MenuDto, error) // 根据用户ID获取用户的权限(可访问)菜单树
 }
 
 type MenuRepository struct {
@@ -76,25 +81,47 @@ func (m MenuRepository) GetUserMenusByUserId(userId uint) ([]*model.Menu, error)
 }
 
 // 根据用户ID获取用户的权限(可访问)菜单树
-func (m MenuRepository) GetUserMenuTreeByUserId(userId uint) ([]*model.Menu, error) {
+func (m MenuRepository) GetUserMenuTreeByUserId(userId uint) ([]dto.MenuDto, error) {
 	menus, err := m.GetUserMenusByUserId(userId)
 	if err != nil {
 		return nil, err
 	}
-	tree := GenMenuTree(0, menus)
+	tree := GenMenuTreeDto(0, menus)
 	return tree, err
 }
 
 // 创建菜单树
-func GenMenuTree(parentId uint, menus []*model.Menu) []*model.Menu {
-	tree := make([]*model.Menu, 0)
-
+func GenMenuTreeDto(parentId uint, menus []*model.Menu) []dto.MenuDto {
+	tree := make([]dto.MenuDto, 0)
 	for _, m := range menus {
 		if *m.ParentId == parentId {
-			children := GenMenuTree(m.ID, menus)
-			m.Children = children
-			tree = append(tree, m)
+			newMenu := dto.ToMenuDto(m)
+			children := GenMenuTreeDto(m.ID, menus)
+			newMenu.Children = children
+			tree = append(tree, newMenu)
 		}
 	}
 	return tree
+}
+
+func (m MenuRepository) GetMenus() ([]*model.Menu, error) {
+	var menus []*model.Menu
+	err := common.DB.Order("sort").Find(&menus).Error
+	return menus, err
+}
+
+func (m MenuRepository) GetMenuTree() ([]dto.MenuDto, error) {
+	menus, err := m.GetMenus()
+	tree := GenMenuTreeDto(0, menus)
+	return tree, err
+}
+
+func (m MenuRepository) CreateMenu(menu *model.Menu) error {
+	err := common.DB.Create(menu).Error
+	return err
+}
+
+func (m MenuRepository) UpdateMenuById(menuId uint, menu *model.Menu) error {
+	err := common.DB.Model(&model.Menu{}).Where("id = ?", menuId).Updates(menu).Error
+	return err
 }
