@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:44:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-09 09:49:24
+ * @LastEditTime: 2026-04-13 17:56:38
  * @Description: repository layer for user
  */
 package repository
@@ -24,6 +24,7 @@ type IUserRepository interface {
 	GetCurrentUser(c *gin.Context) (model.User, error) // 获取当前登录用户信息
 	GetUserById(id uint) (model.User, error)           // 获取单个用户信息
 	CreateUser(user *model.User) error                 // 创建用户
+	UpdateUserById(id uint, user *model.User) error    // 更新用户
 }
 
 type UserRepository struct {
@@ -119,5 +120,10 @@ func (ur UserRepository) GetUserById(id uint) (model.User, error) {
 
 func (ur UserRepository) CreateUser(user *model.User) error {
 	err := common.DB.Create(user).Error
+	return err
+}
+
+func (ur UserRepository) UpdateUserById(id uint, user *model.User) error {
+	err := common.DB.Model(&model.User{}).Where("id = ?", id).Updates(user).Error
 	return err
 }

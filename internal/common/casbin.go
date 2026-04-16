@@ -24,7 +24,7 @@ func InitCasbinEnforcer() {
 		panic(fmt.Sprintf("初始化Casbin失败：%v", err))
 	}
 	CasbinEnforcer = enforcer
-	fmt.Println("初始化Casbin完成!")
+	Log.Info("初始化Casbin完成!")
 }
 
 func initSqliteCasbin() (*casbin.Enforcer, error) {

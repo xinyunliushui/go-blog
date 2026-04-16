@@ -2,7 +2,7 @@
  * @Date: 2026-04-01 22:02:21
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-13 10:15:09
+ * @LastEditTime: 2026-04-16 11:21:22
  * @Description: 初始化管理员用户和角色策略
  */
 package common
@@ -10,7 +10,6 @@ package common
 import (
 	"errors"
 	"go-blog/internal/model"
-	"log"
 
 	"github.com/casbin/casbin/v3"
 	"gorm.io/gorm"
@@ -46,7 +45,7 @@ func InitAdmin(db *gorm.DB, enforcer *casbin.Enforcer) {
 			Roles:        roles[:1], // 可选角色字段，用于业务逻辑
 		}
 		if err := db.Create(&admin).Error; err != nil {
-			log.Fatalf("创建管理员用户失败: %v", err)
+			Log.Errorf("创建管理员用户失败: %v", err)
 		}
 	}
 
@@ -58,7 +57,7 @@ func InitAdmin(db *gorm.DB, enforcer *casbin.Enforcer) {
 	if !hasRolePolicy {
 		_, err := enforcer.AddPolicy("role_admin", "*", "*")
 		if err != nil {
-			log.Fatalf("添加角色策略失败: %v", err)
+			Log.Errorf("添加角色策略失败: %v", err)
 		}
 	}
 	// 检查并添加用户角色绑定
@@ -66,7 +65,7 @@ func InitAdmin(db *gorm.DB, enforcer *casbin.Enforcer) {
 	if !hasGrouping {
 		_, err := enforcer.AddGroupingPolicy("admin", "role_admin")
 		if err != nil {
-			log.Fatalf("添加用户角色绑定失败: %v", err)
+			Log.Errorf("添加用户角色绑定失败: %v", err)
 		}
 	}
 
@@ -135,7 +134,8 @@ func InitAdmin(db *gorm.DB, enforcer *casbin.Enforcer) {
 	if len(newMenus) > 0 {
 		err := DB.Create(&newMenus).Error
 		if err != nil {
-			log.Fatalf("创建管理员菜单数据失败: %v", err)
+			Log.Errorf("创建管理员菜单数据失败: %v", err)
 		}
 	}
+	Log.Info("初始化管理员用户和角色策略完成！")
 }

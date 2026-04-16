@@ -12,7 +12,9 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/jinzhu/configor v1.2.2
 	github.com/thoas/go-funk v0.9.3
+	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.48.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/gorm v1.31.1
 )
@@ -62,6 +64,7 @@ require (
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/arch v0.22.0 // indirect
 	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93 // indirect
 	golang.org/x/net v0.51.0 // indirect

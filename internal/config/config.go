@@ -43,6 +43,14 @@ var Config = struct {
 		Timeout    int
 		MaxRefresh int `yaml:"max_refresh"`
 	}
+	Logs struct {
+		Level      int
+		Path       string
+		MaxSize    int
+		MaxBackups int
+		MaxAge     int
+		Compress   bool
+	}
 }{}
 
 /**
@@ -52,7 +60,7 @@ var Config = struct {
 func InitConfig() {
 	err := configor.Load(&Config, "config.yml")
 	if err != nil {
-		fmt.Printf("初始化配置失败: %s/n", err)
+		fmt.Printf("初始化配置失败: %s\n", err)
 	}
-	fmt.Printf("config: %#v", Config)
+	fmt.Printf("初始化配置成功: %#v\n", Config)
 }

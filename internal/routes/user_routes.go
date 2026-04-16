@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:07:36
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-02 22:17:24
+ * @LastEditTime: 2026-04-13 17:37:28
  * @Description: user routes
  */
 package routes
@@ -27,6 +27,7 @@ func InitUserRoutes(apiGroup *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddlew
 		userRouter.GET("/info", userController.GetUserInfo)
 		userRouter.GET("/userInfo", userController.GetUserInfo)
 		userRouter.POST("/create", userController.CreateUser)
+		userRouter.POST("/update/:userId", userController.UpdateUserById)
 	}
 	return apiGroup
 }

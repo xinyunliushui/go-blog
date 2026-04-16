@@ -18,6 +18,7 @@ func main() {
 	config.InitConfig()
 
 	// 初始化日志
+	common.InitLogger()
 
 	// 初始化数据库
 	common.InitMysql()
