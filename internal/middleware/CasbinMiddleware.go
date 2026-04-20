@@ -32,6 +32,13 @@ func CasbinMiddleware() gin.HandlerFunc {
 		}
 		// 获得用户的全部角色
 		roles := user.Roles
+
+		// 如果用户没有分配角色，提醒用户请联系管理员分配权限
+		if len(roles) == 0 {
+			response.Response(c, 403, 403, nil, "请联系管理员分配权限")
+			c.Abort()
+			return
+		}
 		// 获得用户全部未被禁用的角色的Keyword
 		var subs []string
 		for _, role := range roles {

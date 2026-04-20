@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:44:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-13 17:56:38
+ * @LastEditTime: 2026-04-20 20:35:08
  * @Description: repository layer for user
  */
 package repository
@@ -14,6 +14,8 @@ import (
 	"go-blog/internal/vo"
 
 	"github.com/gin-gonic/gin"
+	"github.com/thoas/go-funk"
+	"gorm.io/gorm"
 )
 
 // 数据层方法接口
@@ -21,10 +23,11 @@ type IUserRepository interface {
 	Login(user *model.User) (*model.User, error) // 登录
 	// GetUsers 分页查询；status 为 nil 时不按状态筛选
 	GetUsers(req *vo.UserListRequest) ([]model.User, int64, error)
-	GetCurrentUser(c *gin.Context) (model.User, error) // 获取当前登录用户信息
-	GetUserById(id uint) (model.User, error)           // 获取单个用户信息
-	CreateUser(user *model.User) error                 // 创建用户
-	UpdateUserById(id uint, user *model.User) error    // 更新用户
+	GetCurrentUser(c *gin.Context) (model.User, error)  // 获取当前登录用户信息
+	GetUserById(id uint) (model.User, error)            // 获取单个用户信息
+	CreateUser(user *model.User) error                  // 创建用户
+	UpdateUserById(id uint, user *model.User) error     // 更新用户
+	GetUserMinRoleSortsByIds(ids []uint) ([]int, error) // 根据用户ID获取用户角色排序最小值
 }
 
 type UserRepository struct {
@@ -38,19 +41,6 @@ func (ur UserRepository) GetUsers(req *vo.UserListRequest) ([]model.User, int64,
 
 	var list []model.User
 	db := common.DB.Model(&model.User{}).Order("created_at DESC")
-
-	// username := strings.TrimSpace(req.Username)
-	// if username != "" {
-	// 	db = db.Where("username LIKE ?", fmt.Sprintf("%%%s%%", username))
-	// }
-	// nickname := strings.TrimSpace(req.Nickname)
-	// if nickname != "" {
-	// 	db = db.Where("nickname LIKE ?", fmt.Sprintf("%%%s%%", nickname))
-	// }
-	// mobile := strings.TrimSpace(req.Mobile)
-	// if mobile != "" {
-	// 	db = db.Where("mobile LIKE ?", fmt.Sprintf("%%%s%%", mobile))
-	// }
 	status := req.Status
 	if status != 0 {
 		db = db.Where("status = ?", status)
@@ -118,12 +108,48 @@ func (ur UserRepository) GetUserById(id uint) (model.User, error) {
 	return user, err
 }
 
+// 创建用户
 func (ur UserRepository) CreateUser(user *model.User) error {
 	err := common.DB.Create(user).Error
 	return err
 }
 
+// 更新用户信息及其角色关联
 func (ur UserRepository) UpdateUserById(id uint, user *model.User) error {
-	err := common.DB.Model(&model.User{}).Where("id = ?", id).Updates(user).Error
+	err := common.Transaction(func(tx *gorm.DB) error {
+		// 1. 更新 users 表
+		if err := tx.Model(user).Updates(user).Error; err != nil {
+			return err
+		}
+		// 2. 更新 user_role 关联表（Replace 会先删旧关联再建新关联）
+		if err := tx.Model(user).Association("Roles").Replace(user.Roles); err != nil {
+			return err
+		}
+		return nil
+	})
 	return err
+}
+
+// 根据用户ID获取用户角色排序最小值
+func (ur UserRepository) GetUserMinRoleSortsByIds(ids []uint) ([]int, error) {
+	// 根据用户ID获取用户信息
+	var userList []model.User
+	err := common.DB.Where("id IN (?)", ids).Preload("Roles").Find(&userList).Error
+	if err != nil {
+		return []int{}, err
+	}
+	if len(userList) == 0 {
+		return []int{}, errors.New("未获取到任何用户信息")
+	}
+	var roleMinSortList []int
+	for _, user := range userList {
+		roles := user.Roles
+		var roleSortList []int
+		for _, role := range roles {
+			roleSortList = append(roleSortList, int(role.Sort))
+		}
+		roleMinSort := funk.MinInt(roleSortList)
+		roleMinSortList = append(roleMinSortList, roleMinSort)
+	}
+	return roleMinSortList, nil
 }

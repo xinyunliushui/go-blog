@@ -7,8 +7,6 @@
  */
 package vo
 
-import "go-blog/internal/model"
-
 // 用户登录结构体
 type RegisterAndLoginRequest struct {
 	Username string `form:"username" json:"username" binding:"required"`
@@ -23,12 +21,12 @@ type UserListRequest struct {
 
 // 创建或更新用户结构体
 type CreateOrUpdateUserRequest struct {
-	Username     string        `form:"username" json:"username" validate:"required,min=2,max=20"`
-	Password     string        `form:"password" json:"password"`
-	Mobile       string        `form:"mobile" json:"mobile" validate:"required,checkMobile"`
-	Avatar       string        `form:"avatar" json:"avatar"`
-	Nickname     string        `form:"nickname" json:"nickname" validate:"min=0,max=20"`
-	Introduction string        `form:"introduction" json:"introduction" validate:"min=0,max=255"`
-	Status       uint          `form:"status" json:"status" validate:"oneof=1 2"`
-	Roles        []*model.Role `form:"roles" json:"roles"`
+	Username     string `form:"username" json:"username" validate:"required,min=2,max=20"`
+	Password     string `form:"password" json:"password"`
+	Mobile       string `form:"mobile" json:"mobile" validate:"required,checkMobile"`
+	Avatar       string `form:"avatar" json:"avatar"`
+	Nickname     string `form:"nickname" json:"nickname" validate:"min=0,max=20"`
+	Introduction string `form:"introduction" json:"introduction" validate:"min=0,max=255"`
+	Status       uint   `form:"status" json:"status" validate:"oneof=1 2"`
+	RoleIds      []uint `form:"roleIds" json:"roleIds" validate:"required"`
 }

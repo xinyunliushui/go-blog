@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:08:27
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-13 21:48:58
+ * @LastEditTime: 2026-04-20 20:48:25
  * @Description: user controller
  */
 package controller
@@ -17,6 +17,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/thoas/go-funk"
 )
 
 type IUserController interface {
@@ -79,21 +80,21 @@ func (uc UserController) CreateUser(ctx *gin.Context) {
 		response.Fail(ctx, nil, common.ValidationErrString(err))
 		return
 	}
-	// 密码通过RSA解密
-	// 密码不为空就解密
-	// if req.Password != "" {
-	// 	decodeData, err := util.RSADecrypt([]byte(req.Password), config.Conf.System.RSAPrivateBytes)
-	// 	if err != nil {
-	// 		response.Fail(ctx, nil, err.Error())
-	// 		return
-	// 	}
-	// 	req.Password = string(decodeData)
-	// 	if len(req.Password) < 6 {
-	// 		response.Fail(ctx, nil, "密码长度至少为6位")
-	// 		return
-	// 	}
-	// }
 	// 创建用户
+	var roles []*model.Role
+	var err error
+	if len(req.RoleIds) > 0 {
+		rr := repository.NewRoleRepository()
+		roles, err = rr.GetRolesByIds(req.RoleIds)
+		if err != nil {
+			response.Fail(ctx, nil, "根据角色ID获取角色信息失败: "+err.Error())
+			return
+		}
+	}
+	userStatus := req.Status
+	if userStatus == 0 {
+		userStatus = 1
+	}
 	user := model.User{
 		Username:     req.Username,
 		Password:     req.Password,
@@ -101,12 +102,13 @@ func (uc UserController) CreateUser(ctx *gin.Context) {
 		Avatar:       req.Avatar,
 		Nickname:     req.Nickname,
 		Introduction: req.Introduction,
-		Status:       1,
+		Status:       userStatus,
+		Roles:        roles,
 		// Creator:      req.Username,
 	}
-	err := uc.UserRepository.CreateUser(&user)
+	err = uc.UserRepository.CreateUser(&user)
 	if err != nil {
-		response.Fail(ctx, nil, "创建用户失败: "+err.Error())
+		response.Fail(ctx, nil, "创建用户失败: ")
 		return
 	}
 	response.Success(ctx, nil, "创建用户成功")
@@ -131,17 +133,115 @@ func (uc UserController) UpdateUserById(ctx *gin.Context) {
 		return
 	}
 
+	// 根据path中的userId获取用户信息
+	oldUser, err := uc.UserRepository.GetUserById(uint(userId))
+	if err != nil {
+		response.Fail(ctx, nil, "获取需要更新的用户信息失败: "+err.Error())
+		return
+	}
+
+	// 获取当前用户
+	ctxUser, err := uc.UserRepository.GetCurrentUser(ctx)
+	if err != nil {
+		response.Fail(ctx, nil, err.Error())
+		return
+	}
+	// 获取当前用户的所有角色
+	currentRoles := ctxUser.Roles
+	// 获取当前用户角色的排序，和前端传来的角色排序做比较
+	var currentRoleSorts []int
+	// 当前用户角色ID集合
+	var currentRoleIds []uint
+	for _, role := range currentRoles {
+		currentRoleSorts = append(currentRoleSorts, int(role.Sort))
+		currentRoleIds = append(currentRoleIds, role.ID)
+	}
+	// 当前用户角色排序最小值（最高等级角色）
+	currentRoleSortMin := funk.MinInt(currentRoleSorts)
+
+	// 获取前端传来的用户角色id
+	reqRoleIds := req.RoleIds
+	if len(reqRoleIds) == 0 {
+		response.Fail(ctx, nil, "用户角色不能为空")
+		return
+	}
+	// 根据角色id获取角色
+	rr := repository.NewRoleRepository()
+	roles, err := rr.GetRolesByIds(reqRoleIds)
+	if err != nil {
+		response.Fail(ctx, nil, "获取用户角色信息失败: ")
+		return
+	}
+	if len(roles) == 0 {
+		response.Fail(ctx, nil, "未获取到角色信息")
+		return
+	}
+	var reqRoleSorts []int
+	for _, role := range roles {
+		reqRoleSorts = append(reqRoleSorts, int(role.Sort))
+	}
+	// 前端传来用户角色排序最小值（最高等级角色）
+	reqRoleSortMin := funk.MinInt(reqRoleSorts)
+
 	user := model.User{
+		Model:        oldUser.Model,
 		Username:     req.Username,
+		Password:     oldUser.Password,
 		Mobile:       req.Mobile,
 		Avatar:       req.Avatar,
 		Nickname:     req.Nickname,
 		Introduction: req.Introduction,
 		Status:       req.Status,
-		Roles:        req.Roles,
+		Creator:      ctxUser.Username,
+		Roles:        roles,
 	}
 
-	err := uc.UserRepository.UpdateUserById(uint(userId), &user)
+	// 判断是更新自己还是更新别人
+	if userId == int(ctxUser.ID) {
+		// 如果是更新自己
+		// 不能禁用自己
+		if req.Status == 2 {
+			response.Fail(ctx, nil, "不能禁用自己")
+			return
+		}
+		// 不能更改自己的角色
+		reqDiff, currentDiff := funk.Difference(req.RoleIds, currentRoleIds)
+		if len(reqDiff.([]uint)) > 0 || len(currentDiff.([]uint)) > 0 {
+			response.Fail(ctx, nil, "不能更改自己的角色")
+			return
+		}
+
+		// 不能更新自己的密码，只能在个人中心更新
+		if req.Password != "" {
+			response.Fail(ctx, nil, "请到个人中心更新自身密码")
+			return
+		}
+
+		// 密码赋值
+		user.Password = ctxUser.Password
+
+	} else {
+		// 如果是更新别人
+		// 用户不能更新比自己角色等级高的或者相同等级的用户
+		// 根据path中的userIdID获取用户角色排序最小值
+		minRoleSorts, err := uc.UserRepository.GetUserMinRoleSortsByIds([]uint{uint(userId)})
+		if err != nil || len(minRoleSorts) == 0 {
+			response.Fail(ctx, nil, "根据用户ID获取用户角色排序最小值失败")
+			return
+		}
+		if currentRoleSortMin >= minRoleSorts[0] {
+			response.Fail(ctx, nil, "用户不能更新比自己角色等级高的或者相同等级的用户")
+			return
+		}
+
+		// 用户不能把别的用户角色等级更新得比自己高或相等
+		if currentRoleSortMin >= reqRoleSortMin {
+			response.Fail(ctx, nil, "用户不能把别的用户角色等级更新得比自己高或相等")
+			return
+		}
+	}
+
+	err = uc.UserRepository.UpdateUserById(uint(userId), &user)
 	if err != nil {
 		response.Fail(ctx, nil, "更新用户失败: "+err.Error())
 		return
