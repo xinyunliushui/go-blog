@@ -1,0 +1,12 @@
+# 开发环境覆盖配置（基于 config.yml merge）
+# mysql配置
+mysql:
+  username: root
+  password: blogY1Jo)%
+  database: go_blog
+  host: localhost
+  port: 3306
+  query: parseTime=True&loc=Local&timeout=10000ms
+  log_mode: true
+  charset: utf8mb4
+  collation: utf8mb4_general_ci

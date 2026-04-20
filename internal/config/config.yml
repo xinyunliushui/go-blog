@@ -1,0 +1,33 @@
+# 系统配置（公共基础配置）
+application:
+  # 端口
+  port: 8080
+  # 路径前缀
+  url_path_prefix: api
+  # 可选：生产环境填写浏览器访问前端的完整 Origin（可多项），与 Access-Control-Allow-Credentials 配合使用
+  # cors_allow_origins: http://localhost:3000
+  # rsa公钥文件路径(internal/config/config.yml相对路径, 也可以填绝对路径)
+  rsa_public_key: go-blog-pub.pem
+  # rsa私钥文件路径(internal/config/config.yml相对路径, 也可以填绝对路径)
+  rsa_private_key: go-blog-priv.pem
+
+
+
+# casbin配置
+casbin:
+  model_path: 'rbac_model.conf'
+
+# jwt配置
+jwt:
+  realm: blog-admin-realm
+  key: blog-secret-key
+  timeout: 2
+  max_refresh: 2
+
+logs:
+  level: 1
+  path: logs
+  max-size: 50
+  max-backups: 1
+  max-age: 7
+  compress: false

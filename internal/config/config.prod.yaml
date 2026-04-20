@@ -1,0 +1,14 @@
+mysql:
+  # 建议通过环境变量覆盖敏感字段（如 MYSQL_USERNAME / MYSQL_PASSWORD）
+  username: prod_user
+  password: please_set_from_env
+  host: mysql-prod.internal
+  port: 3306
+  database: go_blog_prod
+  query: parseTime=True&loc=Local&timeout=10000ms
+  log_mode: false
+  charset: utf8mb4
+  collation: utf8mb4_general_ci
+
+logs:
+  level: 1

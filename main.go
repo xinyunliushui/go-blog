@@ -11,11 +11,15 @@ import (
 	"go-blog/internal/common"
 	"go-blog/internal/config"
 	"go-blog/internal/routes"
+	"log"
 )
 
 func main() {
 	// 初始化配置
-	config.InitConfig()
+	if err := config.InitConfig(); err != nil {
+		log.Fatalf("初始化配置失败: %v", err)
+		return
+	}
 
 	// 初始化日志
 	common.InitLogger()

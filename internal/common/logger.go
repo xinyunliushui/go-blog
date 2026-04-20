@@ -2,7 +2,7 @@
  * @Date: 2026-04-16 10:00:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-16 11:22:13
+ * @LastEditTime: 2026-04-17 14:00:42
  * @Description: 日志记录器	由于zap不具备日志切割功能, 这里使用lumberjack配合使用
  */
 
@@ -36,10 +36,14 @@ var Log *zap.SugaredLogger
 func InitLogger() {
 	var coreArr []zapcore.Core
 
-	// 日志级别
+	// 1. 定义不同输出目标的级别过滤器
+
+	// Zap 提供了 Debug, Info, Warn, Error, DPanic, Panic, Fatal 七个日志级别，优先级逐级递增
+	// 仅记录 Error 级别及以上的日志
 	highPriority := zap.LevelEnablerFunc(func(level zapcore.Level) bool {
 		return level >= zap.ErrorLevel
 	})
+	// 仅记录 Info 级别及以上的日志
 	lowPriority := zap.LevelEnablerFunc(func(level zapcore.Level) bool {
 		return level < zap.ErrorLevel && level >= zap.DebugLevel
 	})
@@ -49,26 +53,23 @@ func InitLogger() {
 			return false
 		})
 	}
-	// 获取编码器
+
+	// 2. 配置日志编码器
 	encoder := getEncoder()
 
-	// info文件writeSyncer
+	// 3. 配置日志输出目标 (WriteSyncer)
 	infoFileWriteSyncer := getInfoWriteSyncer()
-	/**
-	 * 创建日志核心
-	 * encoder 编码器
-	 * writeSyncer 写入器，负责日志写入的位置
-	 * level 日志级别，不同级别的日志进行分流记录
-	 */
-	infoFileCore := zapcore.NewCore(encoder, zapcore.NewMultiWriteSyncer(infoFileWriteSyncer, zapcore.AddSync(os.Stdout)), lowPriority)
-
 	errorFileWriteSyncer := getErrorWriteSyncer()
+
+	// 4. 创建多个 Core
+	infoFileCore := zapcore.NewCore(encoder, zapcore.NewMultiWriteSyncer(infoFileWriteSyncer, zapcore.AddSync(os.Stdout)), lowPriority)
 	errorFileCore := zapcore.NewCore(encoder, zapcore.NewMultiWriteSyncer(errorFileWriteSyncer, zapcore.AddSync(os.Stdout)), highPriority)
 
 	coreArr = append(coreArr, infoFileCore)
 	coreArr = append(coreArr, errorFileCore)
-	// 创建日志记录器
+	// 5. 创建 Logger，使用 NewTee 将多个 Core 合并，并添加调用者信息(行号、文件名)
 	logger := zap.New(zapcore.NewTee(coreArr...), zap.AddCaller())
+	// 6. 创建 Sugared Logger，方便使用
 	Log = logger.Sugar()
 	Log.Info("初始化zap日志完成!")
 }
@@ -93,6 +94,7 @@ func getEncoder() zapcore.Encoder {
 		EncodeDuration: zapcore.SecondsDurationEncoder,
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
+	// 配置日志编码器 (生产环境推荐使用 JSON)
 	encoder := zapcore.NewConsoleEncoder(encoderConfig)
 	return encoder
 }
