@@ -2,7 +2,7 @@
  * @Date: 2026-03-23 21:59:35
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-20 09:24:14
+ * @LastEditTime: 2026-04-21 14:13:47
  * @Description:
  */
 package config
@@ -22,7 +22,6 @@ var Config = new(config)
 type config struct {
 	Application *application
 	Mysql       *mysqlConfig
-	Casbin      *casbin
 	Jwt         *jwt
 	Logs        *logs
 }
@@ -49,11 +48,6 @@ type mysqlConfig struct {
 	TablePrefix string `mapstructure:"table_prefix" yaml:"table_prefix"`
 	Charset     string `mapstructure:"charset" yaml:"charset"`
 	Collation   string `mapstructure:"collation" yaml:"collation"`
-}
-
-// casbin配置
-type casbin struct {
-	ModelPath string `mapstructure:"model_path" yaml:"model_path"`
 }
 
 // jwt配置

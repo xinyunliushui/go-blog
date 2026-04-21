@@ -2,7 +2,7 @@
  * @Date: 2026-03-18 21:50:24
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-02 11:12:32
+ * @LastEditTime: 2026-04-21 14:05:52
  * @Description: main
  */
 package main
@@ -27,15 +27,12 @@ func main() {
 	// 初始化数据库
 	common.InitMysql()
 
-	// 初始化casbin管理器
-	common.InitCasbinEnforcer()
-
 	// 初始化validator（汉化）
 	common.InitValidator()
 
 	// 初始化mysql数据
 	// common.InitMysqlData()
-	common.InitAdmin(common.DB, common.CasbinEnforcer)
+	common.InitAdmin(common.DB)
 
 	// 初始化路由服务
 	routes.InitRoutes()

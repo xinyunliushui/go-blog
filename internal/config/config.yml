@@ -11,12 +11,6 @@ application:
   # rsa私钥文件路径(internal/config/config.yml相对路径, 也可以填绝对路径)
   rsa_private_key: go-blog-priv.pem
 
-
-
-# casbin配置
-casbin:
-  model_path: 'rbac_model.conf'
-
 # jwt配置
 jwt:
   realm: blog-admin-realm

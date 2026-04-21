@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:44:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-20 20:35:08
+ * @LastEditTime: 2026-04-20 21:12:36
  * @Description: repository layer for user
  */
 package repository
@@ -23,11 +23,12 @@ type IUserRepository interface {
 	Login(user *model.User) (*model.User, error) // 登录
 	// GetUsers 分页查询；status 为 nil 时不按状态筛选
 	GetUsers(req *vo.UserListRequest) ([]model.User, int64, error)
-	GetCurrentUser(c *gin.Context) (model.User, error)  // 获取当前登录用户信息
-	GetUserById(id uint) (model.User, error)            // 获取单个用户信息
-	CreateUser(user *model.User) error                  // 创建用户
-	UpdateUserById(id uint, user *model.User) error     // 更新用户
-	GetUserMinRoleSortsByIds(ids []uint) ([]int, error) // 根据用户ID获取用户角色排序最小值
+	GetCurrentUser(c *gin.Context) (model.User, error)                  // 获取当前登录用户信息
+	GetUserById(id uint) (model.User, error)                            // 获取单个用户信息
+	CreateUser(user *model.User) error                                  // 创建用户
+	UpdateUserById(id uint, user *model.User) error                     // 更新用户
+	GetUserMinRoleSortsByIds(ids []uint) ([]int, error)                 // 根据用户ID获取用户角色排序最小值
+	GetCurrentUserMinRoleSort(c *gin.Context) (uint, model.User, error) // 获取当前用户角色排序最小值（最高等级角色）以及当前用户信息
 }
 
 type UserRepository struct {
@@ -152,4 +153,24 @@ func (ur UserRepository) GetUserMinRoleSortsByIds(ids []uint) ([]int, error) {
 		roleMinSortList = append(roleMinSortList, roleMinSort)
 	}
 	return roleMinSortList, nil
+}
+
+// 获取当前用户角色排序最小值（最高等级角色）以及当前用户信息
+func (ur UserRepository) GetCurrentUserMinRoleSort(c *gin.Context) (uint, model.User, error) {
+	// 获取当前用户
+	ctxUser, err := ur.GetCurrentUser(c)
+	if err != nil {
+		return 999, ctxUser, err
+	}
+	// 获取当前用户的所有角色
+	currentRoles := ctxUser.Roles
+	// 获取当前用户角色的排序，和前端传来的角色排序做比较
+	var currentRoleSorts []int
+	for _, role := range currentRoles {
+		currentRoleSorts = append(currentRoleSorts, int(role.Sort))
+	}
+	// 当前用户角色排序最小值（最高等级角色）
+	currentRoleSortMin := uint(funk.MinInt(currentRoleSorts))
+
+	return currentRoleSortMin, ctxUser, nil
 }

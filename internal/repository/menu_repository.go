@@ -2,7 +2,7 @@
  * @Date: 2026-04-08 21:28:24
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-13 15:18:04
+ * @LastEditTime: 2026-04-21 09:27:44
  * @Description: 菜单仓库
  */
 package repository
@@ -21,6 +21,7 @@ type IMenuRepository interface {
 	CreateMenu(menu *model.Menu) error                          // 创建菜单
 	UpdateMenuById(menuId uint, menu *model.Menu) error         // 更新菜单
 	GetUserMenuTreeByUserId(userId uint) ([]dto.MenuDto, error) // 根据用户ID获取用户的权限(可访问)菜单树
+	GetUserMenusByUserId(userId uint) ([]*model.Menu, error)    // 根据用户ID获取用户的权限(可访问)菜单列表
 }
 
 type MenuRepository struct {

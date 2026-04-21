@@ -9,7 +9,6 @@ package routes
 
 import (
 	"go-blog/internal/controller"
-	"go-blog/internal/middleware"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
@@ -20,8 +19,6 @@ func InitUserRoutes(apiGroup *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddlew
 	userRouter := apiGroup.Group("/user")
 	// 开启jwt认证中间件
 	userRouter.Use(authMiddleware.MiddlewareFunc())
-	// 启用Casbin中间件（进行权限认证）
-	userRouter.Use(middleware.CasbinMiddleware())
 	{
 		userRouter.GET("/list", userController.GetUsers)
 		userRouter.GET("/info", userController.GetUserInfo)

@@ -11,11 +11,10 @@ import (
 	"errors"
 	"go-blog/internal/model"
 
-	"github.com/casbin/casbin/v3"
 	"gorm.io/gorm"
 )
 
-func InitAdmin(db *gorm.DB, enforcer *casbin.Enforcer) {
+func InitAdmin(db *gorm.DB) {
 	// 1. 创建默认管理员用户（如果不存在）
 	var admin model.User
 	roles := []*model.Role{
@@ -25,6 +24,15 @@ func InitAdmin(db *gorm.DB, enforcer *casbin.Enforcer) {
 			Keyword: "role_admin",
 			Desc:    new(string),
 			Sort:    1, // 排序越大权限越低
+			Status:  1, // 正常
+			Creator: "系统",
+		},
+		{
+			Model:   gorm.Model{ID: 2},
+			Name:    "用户管理",
+			Keyword: "role_user",
+			Desc:    new(string),
+			Sort:    5, // 排序越大权限越低
 			Status:  1, // 正常
 			Creator: "系统",
 		},
@@ -46,26 +54,6 @@ func InitAdmin(db *gorm.DB, enforcer *casbin.Enforcer) {
 		}
 		if err := db.Create(&admin).Error; err != nil {
 			Log.Errorf("创建管理员用户失败: %v", err)
-		}
-	}
-
-	// 1. 定义角色策略: p, role_admin, *, *
-	// 2. 将用户加入角色: g, admin, role_admin
-	// 检查并添加角色策略
-
-	hasRolePolicy, _ := enforcer.HasPolicy("role_admin", "*", "*")
-	if !hasRolePolicy {
-		_, err := enforcer.AddPolicy("role_admin", "*", "*")
-		if err != nil {
-			Log.Errorf("添加角色策略失败: %v", err)
-		}
-	}
-	// 检查并添加用户角色绑定
-	hasGrouping, _ := enforcer.HasGroupingPolicy("admin", "role_admin")
-	if !hasGrouping {
-		_, err := enforcer.AddGroupingPolicy("admin", "role_admin")
-		if err != nil {
-			Log.Errorf("添加用户角色绑定失败: %v", err)
 		}
 	}
 
