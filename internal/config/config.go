@@ -2,13 +2,14 @@
  * @Date: 2026-03-23 21:59:35
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-21 14:13:47
+ * @LastEditTime: 2026-04-21 17:19:15
  * @Description:
  */
 package config
 
 import (
 	"fmt"
+	"go-blog/internal/utils"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,10 +29,14 @@ type config struct {
 
 // 应用配置
 type application struct {
-	Port            int    `mapstructure:"port" yaml:"port"`
-	UrlPathPrefix   string `mapstructure:"url_path_prefix" yaml:"url_path_prefix"`
-	RSAPublicBytes  string `mapstructure:"rsa_public_key" yaml:"rsa_public_key"`
-	RSAPrivateBytes string `mapstructure:"rsa_private_key" yaml:"rsa_private_key"`
+	Port          int    `mapstructure:"port" yaml:"port"`
+	UrlPathPrefix string `mapstructure:"url_path_prefix" yaml:"url_path_prefix"`
+	// rsa公钥和私钥文件地址
+	RSAPublicKeyPath  string `mapstructure:"rsa_public_key_path" yaml:"rsa_public_key_path"`
+	RSAPrivateKeyPath string `mapstructure:"rsa_private_key_path" yaml:"rsa_private_key_path"`
+	// rsa公钥和私钥文件内容
+	RSAPublicBytes  []byte `mapstructure:"-" json:"-"`
+	RSAPrivateBytes []byte `mapstructure:"-" json:"-"`
 	// 非空时仅允许列表内 Origin 携带凭证跨域；为空则回显请求 Origin（勿在生产依赖此行为）
 	CorsAllowOrigins []string `mapstructure:"cors_allow_origins" yaml:"cors_allow_origins"`
 }
@@ -145,9 +150,9 @@ func mergeEnvConfig(v *viper.Viper, env string) error {
  * @return: error
  */
 func ValidateConfig(cfg *config) error {
-	if cfg.Application.Port == 0 {
-		cfg.Application.Port = 8080 // 默认值
-	}
+	// 读取rsa公钥和私钥文件内容
+	Config.Application.RSAPublicBytes = utils.RSAReadKeyFromFile(Config.Application.RSAPublicKeyPath)
+	Config.Application.RSAPrivateBytes = utils.RSAReadKeyFromFile(Config.Application.RSAPrivateKeyPath)
 	// 更多校验...
 	return nil
 }

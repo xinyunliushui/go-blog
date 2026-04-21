@@ -2,7 +2,7 @@
  * @Date: 2026-03-31 17:07:35
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-01 20:49:57
+ * @LastEditTime: 2026-04-21 15:56:31
  * @Description: gin-jwt认证中间件
  */
 package middleware
@@ -76,15 +76,14 @@ func login(c *gin.Context) (interface{}, error) {
 	}
 
 	// 密码通过RSA解密
-	// decodeData, err := utils.RSADecrypt([]byte(req.Password), config.Config.Application.RSAPrivateBytes)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	decodeData, err := utils.RSADecrypt([]byte(req.Password), config.Config.Application.RSAPrivateBytes)
+	if err != nil {
+		return nil, err
+	}
 
 	u := &model.User{
 		Username: req.Username,
-		// Password: string(decodeData),
-		Password: req.Password,
+		Password: string(decodeData),
 	}
 
 	// 密码校验

@@ -2,7 +2,7 @@
  * @Date: 2026-04-01 22:02:21
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-16 11:21:22
+ * @LastEditTime: 2026-04-21 15:15:46
  * @Description: 初始化管理员用户和角色策略
  */
 package common
@@ -10,6 +10,7 @@ package common
 import (
 	"errors"
 	"go-blog/internal/model"
+	"go-blog/internal/utils"
 
 	"gorm.io/gorm"
 )
@@ -27,15 +28,6 @@ func InitAdmin(db *gorm.DB) {
 			Status:  1, // 正常
 			Creator: "系统",
 		},
-		{
-			Model:   gorm.Model{ID: 2},
-			Name:    "用户管理",
-			Keyword: "role_user",
-			Desc:    new(string),
-			Sort:    5, // 排序越大权限越低
-			Status:  1, // 正常
-			Creator: "系统",
-		},
 	}
 	result := db.Where("username = ?", "admin").First(&admin)
 	if result.Error != nil {
@@ -43,7 +35,7 @@ func InitAdmin(db *gorm.DB) {
 		// 用户不存在，创建新管理员
 		admin = model.User{
 			Username:     "admin",
-			Password:     "admin123",
+			Password:     utils.GenPasswd("admin123"),
 			Mobile:       "18888888888",
 			Avatar:       "https://gips1.baidu.com/it/u=1397155327,2622199615&fm=3074&app=3074&f=PNG?w=2048&h=2048",
 			Nickname:     "动物园园长",

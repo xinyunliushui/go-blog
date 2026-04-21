@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:44:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-20 21:12:36
+ * @LastEditTime: 2026-04-21 15:57:52
  * @Description: repository layer for user
  */
 package repository
@@ -11,6 +11,7 @@ import (
 	"errors"
 	"go-blog/internal/common"
 	"go-blog/internal/model"
+	"go-blog/internal/utils"
 	"go-blog/internal/vo"
 
 	"github.com/gin-gonic/gin"
@@ -74,8 +75,8 @@ func (ur UserRepository) Login(user *model.User) (*model.User, error) {
 		return nil, errors.New("用户不存在")
 	}
 	// 校验密码
-	// err = utils.ComparePasswd(firstUser.Password, user.Password)
-	if firstUser.Password != user.Password {
+	err = utils.ComparePasswd(firstUser.Password, user.Password)
+	if err != nil {
 		return &firstUser, errors.New("密码错误")
 	}
 

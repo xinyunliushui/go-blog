@@ -6,10 +6,10 @@ application:
   url_path_prefix: api
   # 可选：生产环境填写浏览器访问前端的完整 Origin（可多项），与 Access-Control-Allow-Credentials 配合使用
   # cors_allow_origins: http://localhost:3000
-  # rsa公钥文件路径(internal/config/config.yml相对路径, 也可以填绝对路径)
-  rsa_public_key: go-blog-pub.pem
-  # rsa私钥文件路径(internal/config/config.yml相对路径, 也可以填绝对路径)
-  rsa_private_key: go-blog-priv.pem
+  # rsa公钥文件
+  rsa_public_key_path: public_key.pem
+  # rsa私钥文件
+  rsa_private_key_path: private_key.pem
 
 # jwt配置
 jwt:

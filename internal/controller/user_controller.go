@@ -2,17 +2,19 @@
  * @Date: 2026-03-25 22:08:27
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-20 20:48:25
+ * @LastEditTime: 2026-04-21 16:16:00
  * @Description: user controller
  */
 package controller
 
 import (
 	"go-blog/internal/common"
+	"go-blog/internal/config"
 	"go-blog/internal/dto"
 	"go-blog/internal/model"
 	"go-blog/internal/repository"
 	"go-blog/internal/response"
+	"go-blog/internal/utils"
 	"go-blog/internal/vo"
 	"strconv"
 
@@ -48,6 +50,11 @@ func (uc UserController) GetUserInfo(ctx *gin.Context) {
 	response.Success(ctx, dto.ToUserInfoDto(user), "获取用户信息成功")
 }
 
+/**
+ * @description: 获取用户列表
+ * @param {*} ctx
+ * @return {*}
+ */
 func (uc UserController) GetUsers(ctx *gin.Context) {
 	var req vo.UserListRequest
 	// 参数绑定
@@ -68,6 +75,7 @@ func (uc UserController) GetUsers(ctx *gin.Context) {
 	response.Success(ctx, gin.H{"content": dto.ToUsersDto(users), "total": total, "page": req.Page, "pageSize": req.PageSize}, "获取用户列表成功")
 }
 
+// 创建用户
 func (uc UserController) CreateUser(ctx *gin.Context) {
 	var req vo.CreateOrUpdateUserRequest
 	// 参数绑定
@@ -97,14 +105,23 @@ func (uc UserController) CreateUser(ctx *gin.Context) {
 	}
 	user := model.User{
 		Username:     req.Username,
-		Password:     req.Password,
 		Mobile:       req.Mobile,
 		Avatar:       req.Avatar,
 		Nickname:     req.Nickname,
 		Introduction: req.Introduction,
 		Status:       userStatus,
 		Roles:        roles,
-		// Creator:      req.Username,
+		Creator:      req.Username,
+	}
+	// 密码赋值
+	if req.Password != "" {
+		// 密码通过RSA解密
+		decodeData, err := utils.RSADecrypt([]byte(req.Password), config.Config.Application.RSAPrivateBytes)
+		if err != nil {
+			response.Fail(ctx, nil, err.Error())
+			return
+		}
+		user.Password = utils.GenPasswd(string(decodeData))
 	}
 	err = uc.UserRepository.CreateUser(&user)
 	if err != nil {
@@ -121,7 +138,6 @@ func (uc UserController) UpdateUserById(ctx *gin.Context) {
 		return
 	}
 	var req vo.CreateOrUpdateUserRequest
-	// BindAndValidate(ctx, &req)
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
 		response.Fail(ctx, nil, common.ValidationErrString(err))
@@ -238,6 +254,17 @@ func (uc UserController) UpdateUserById(ctx *gin.Context) {
 		if currentRoleSortMin >= reqRoleSortMin {
 			response.Fail(ctx, nil, "用户不能把别的用户角色等级更新得比自己高或相等")
 			return
+		}
+
+		// 密码赋值
+		if req.Password != "" {
+			// 密码通过RSA解密
+			decodeData, err := utils.RSADecrypt([]byte(req.Password), config.Config.Application.RSAPrivateBytes)
+			if err != nil {
+				response.Fail(ctx, nil, err.Error())
+				return
+			}
+			user.Password = utils.GenPasswd(string(decodeData))
 		}
 	}
 
