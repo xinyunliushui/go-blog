@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:44:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-21 15:57:52
+ * @LastEditTime: 2026-04-21 17:28:07
  * @Description: repository layer for user
  */
 package repository
@@ -30,6 +30,7 @@ type IUserRepository interface {
 	UpdateUserById(id uint, user *model.User) error                     // 更新用户
 	GetUserMinRoleSortsByIds(ids []uint) ([]int, error)                 // 根据用户ID获取用户角色排序最小值
 	GetCurrentUserMinRoleSort(c *gin.Context) (uint, model.User, error) // 获取当前用户角色排序最小值（最高等级角色）以及当前用户信息
+	ChangePwd(username string, hashNewPasswd string) error              // 更新密码
 }
 
 type UserRepository struct {
@@ -174,4 +175,10 @@ func (ur UserRepository) GetCurrentUserMinRoleSort(c *gin.Context) (uint, model.
 	currentRoleSortMin := uint(funk.MinInt(currentRoleSorts))
 
 	return currentRoleSortMin, ctxUser, nil
+}
+
+// 更新密码
+func (ur UserRepository) ChangePwd(username string, hashNewPasswd string) error {
+	err := common.DB.Model(&model.User{}).Where("username = ?", username).Update("password", hashNewPasswd).Error
+	return err
 }

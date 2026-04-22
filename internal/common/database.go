@@ -2,7 +2,7 @@
  * @Date: 2026-03-23 23:08:26
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-03-25 23:20:20
+ * @LastEditTime: 2026-04-22 17:05:46
  * @Description: database
  */
 package common
@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"go-blog/internal/config"
 	"go-blog/internal/model"
+
+	"go-blog/internal/utils"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -52,8 +54,9 @@ func InitMysql() {
 	DB = db
 
 	// 迁移表结构
-	// TODO:通过环境变量控制
-	dbAutoMigrate()
+	if env := utils.GetEnv("APP_ENV", "dev"); env == "dev" {
+		dbAutoMigrate()
+	}
 }
 
 /**
@@ -65,8 +68,7 @@ func dbAutoMigrate() {
 		&model.User{},
 		&model.Role{},
 		&model.Menu{},
-		// &model.Api{},
-		// &model.OperationLog{},
+		&model.Blog{},
 	)
 }
 

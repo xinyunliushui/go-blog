@@ -30,3 +30,9 @@ type CreateOrUpdateUserRequest struct {
 	Status       uint   `form:"status" json:"status" validate:"oneof=1 2"`
 	RoleIds      []uint `form:"roleIds" json:"roleIds" validate:"required"`
 }
+
+// 更新密码结构体
+type ChangePwdRequest struct {
+	OldPassword string `json:"oldPassword" form:"oldPassword" validate:"required"`
+	NewPassword string `json:"newPassword" form:"newPassword" validate:"required"`
+}

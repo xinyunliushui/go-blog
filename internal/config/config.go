@@ -2,7 +2,7 @@
  * @Date: 2026-03-23 21:59:35
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-21 17:19:15
+ * @LastEditTime: 2026-04-22 17:07:01
  * @Description:
  */
 package config
@@ -10,7 +10,6 @@ package config
 import (
 	"fmt"
 	"go-blog/internal/utils"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -79,7 +78,7 @@ type logs struct {
  */
 func InitConfig() error {
 	// 1. 获取默认环境
-	env := getEnv("APP_ENV", "dev")
+	env := utils.GetEnv("APP_ENV", "dev")
 
 	// 2. 初始化 viper
 	v := viper.New()
@@ -126,14 +125,6 @@ func InitConfig() error {
 
 	fmt.Printf("初始化配置成功: %#v\n", Config)
 	return nil
-}
-
-// 获取环境变量
-func getEnv(key string, defaultVal string) string {
-	if val := os.Getenv(key); val != "" {
-		return strings.ToLower(val)
-	}
-	return defaultVal
 }
 
 // 合并环境配置文件

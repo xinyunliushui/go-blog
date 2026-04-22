@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:08:27
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-21 16:16:00
+ * @LastEditTime: 2026-04-21 17:27:21
  * @Description: user controller
  */
 package controller
@@ -27,6 +27,7 @@ type IUserController interface {
 	GetUsers(ctx *gin.Context)
 	CreateUser(ctx *gin.Context)
 	UpdateUserById(ctx *gin.Context)
+	ChangePwd(ctx *gin.Context)
 }
 
 type UserController struct {
@@ -275,4 +276,57 @@ func (uc UserController) UpdateUserById(ctx *gin.Context) {
 	}
 	response.Success(ctx, nil, "更新用户成功")
 
+}
+
+// 更新用户登录密码
+func (uc UserController) ChangePwd(ctx *gin.Context) {
+	var req vo.ChangePwdRequest
+
+	// 参数绑定
+	if err := ctx.ShouldBind(&req); err != nil {
+		response.Fail(ctx, nil, common.ValidationErrString(err))
+		return
+	}
+	// 参数校验
+	if err := common.Validate.Struct(&req); err != nil {
+		response.Fail(ctx, nil, common.ValidationErrString(err))
+		return
+	}
+
+	// 前端传来的密码是rsa加密的,先解密
+	// 密码通过RSA解密
+	decodeOldPassword, err := utils.RSADecrypt([]byte(req.OldPassword), config.Config.Application.RSAPrivateBytes)
+	if err != nil {
+		response.Fail(ctx, nil, err.Error())
+		return
+	}
+	decodeNewPassword, err := utils.RSADecrypt([]byte(req.NewPassword), config.Config.Application.RSAPrivateBytes)
+	if err != nil {
+		response.Fail(ctx, nil, err.Error())
+		return
+	}
+	req.OldPassword = string(decodeOldPassword)
+	req.NewPassword = string(decodeNewPassword)
+
+	// 获取当前用户
+	user, err := uc.UserRepository.GetCurrentUser(ctx)
+	if err != nil {
+		response.Fail(ctx, nil, err.Error())
+		return
+	}
+	// 获取用户的真实正确密码
+	correctPasswd := user.Password
+	// 判断前端请求的密码是否等于真实密码
+	err = utils.ComparePasswd(correctPasswd, req.OldPassword)
+	if err != nil {
+		response.Fail(ctx, nil, "原密码有误")
+		return
+	}
+	// 更新密码
+	err = uc.UserRepository.ChangePwd(user.Username, utils.GenPasswd(req.NewPassword))
+	if err != nil {
+		response.Fail(ctx, nil, "更新密码失败: "+err.Error())
+		return
+	}
+	response.Success(ctx, nil, "更新密码成功")
 }

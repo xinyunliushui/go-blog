@@ -58,6 +58,9 @@ func InitAdmin(db *gorm.DB) {
 	usersIconStr := "UserOutlined"
 	rolesIconStr := "TeamOutlined"
 	menusIconStr := "AppstoreOutlined"
+	contentIconStr := "ReadOutlined"
+	contentBlogsStr := "/content/blogs"
+	var uint5 uint = 5
 	menus := []model.Menu{
 		{
 			Model:    gorm.Model{ID: 1},
@@ -101,6 +104,31 @@ func InitAdmin(db *gorm.DB) {
 			Path:     "resources",
 			Sort:     13,
 			ParentId: &uint1,
+			Roles:    roles[:1],
+			Creator:  "系统",
+		},
+		{
+			Model:    gorm.Model{ID: 5},
+			Name:     "content",
+			Title:    "内容管理",
+			Icon:     &contentIconStr,
+			Path:     "content",
+			Redirect: &contentBlogsStr,
+			Type:     1,
+			Sort:     20,
+			ParentId: &uint0,
+			Roles:    roles[:1],
+			Creator:  "系统",
+		},
+		{
+			Model:    gorm.Model{ID: 6},
+			Name:     "Blogs",
+			Title:    "博客管理",
+			Icon:     &contentIconStr,
+			Path:     "blogs",
+			Type:     2,
+			Sort:     21,
+			ParentId: &uint5,
 			Roles:    roles[:1],
 			Creator:  "系统",
 		},

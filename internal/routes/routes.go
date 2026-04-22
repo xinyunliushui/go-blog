@@ -42,6 +42,9 @@ func InitRoutes() {
 	// 注册菜单路由
 	InitMenuRoutes(apiGroup, authMiddleware)
 
+	// 注册博客路由
+	InitBlogRoutes(apiGroup, authMiddleware)
+
 	// 启动
 	router.Run(":8080")
 }

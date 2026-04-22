@@ -2,7 +2,7 @@
  * @Date: 2026-03-31 17:19:10
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-03-31 17:19:14
+ * @LastEditTime: 2026-04-22 17:25:38
  * @Description: standardized response
  */
 package response
@@ -25,5 +25,5 @@ func Success(c *gin.Context, data interface{}, message string) {
 
 // 返回前端-失败
 func Fail(c *gin.Context, data interface{}, message string) {
-	Response(c, http.StatusBadRequest, 400, data, message)
+	Response(c, http.StatusBadRequest, 500, data, message)
 }
