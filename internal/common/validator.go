@@ -2,7 +2,7 @@
  * @Date: 2026-03-27 21:51:44
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-13 16:38:39
+ * @LastEditTime: 2026-04-24 11:07:46
  * @Description: validator
  */
 package common
@@ -27,6 +27,10 @@ var Validate = validator.New()
 // 全局翻译器
 var Trans ut.Translator
 
+/** 注册标签函数
+ * @param v *validator.Validate 验证器
+ * @return void
+ */
 func registerTagNameFunc(v *validator.Validate) {
 	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
 		for _, tag := range []string{"json", "form", "uri"} {
@@ -42,7 +46,10 @@ func registerTagNameFunc(v *validator.Validate) {
 	})
 }
 
-// ValidationErrString 将 binding / validator 错误转为中文提示（校验类错误走翻译，其余给常用中文说明）。
+/** 将 binding / validator 错误转为中文提示（校验类错误走翻译，其余给常用中文说明）。
+ * @param err error 错误
+ * @return string 错误提示
+ */
 func ValidationErrString(err error) string {
 	var ve validator.ValidationErrors
 	if errors.As(err, &ve) && len(ve) > 0 {
@@ -80,6 +87,10 @@ func InitValidator() {
 	}
 }
 
+/** 手机号校验
+ * @param fl validator.FieldLevel 字段级别
+ * @return bool 是否校验通过
+ */
 func checkMobile(fl validator.FieldLevel) bool {
 	reg := `^1([38][0-9]|14[579]|5[^4]|16[6]|7[1-35-8]|9[189])\d{8}$`
 	rgx := regexp.MustCompile(reg)

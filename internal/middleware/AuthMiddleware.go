@@ -176,6 +176,10 @@ func loginResponse(c *gin.Context, code int, token string, expires time.Time) {
  * @return void
  */
 func logoutResponse(c *gin.Context, code int) {
+	secure := requestIsHTTPS(c)
+	c.SetSameSite(http.SameSiteLaxMode)
+	// 让浏览器立即删除 jwt Cookie，避免刷新后仍携带旧 token。
+	c.SetCookie("jwt", "", -1, "/", "", secure, true)
 	response.Success(c, nil, "退出成功")
 }
 
