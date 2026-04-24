@@ -2,13 +2,16 @@
  * @Date: 2026-04-22 15:58:00
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-24 10:18:23
+ * @LastEditTime: 2026-04-24 16:07:09
  * @Description: 博客路由
  */
 package routes
 
 import (
+	"go-blog/internal/config"
 	"go-blog/internal/controller"
+	"go-blog/internal/middleware"
+	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
@@ -19,6 +22,11 @@ func InitBlogRoutes(apiGroup *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddlew
 	blogController := controller.NewBlogController()
 	// 公开路由：不需要登录录认证
 	blogPublicRouter := apiGroup.Group("/blog")
+	// 启用限流中间
+	// 默认每50毫秒填充一个令牌，最多填充200个
+	fillInterval := time.Duration(config.Config.RateLimit.FillInterval)
+	capacity := config.Config.RateLimit.Capacity
+	blogPublicRouter.Use(middleware.RateLimitMiddleware(fillInterval, capacity))
 	{
 		blogPublicRouter.GET("/list", blogController.GetBlogs)
 		blogPublicRouter.GET("/detail/:blogId", blogController.GetBlogById)

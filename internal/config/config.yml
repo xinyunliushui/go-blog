@@ -25,3 +25,10 @@ logs:
   max-backups: 1
   max-age: 7
   compress: false
+
+# 限流配置
+rate-limit:
+  # 填充一个令牌需要的时间间隔,毫秒
+  fill-interval: 50
+  # 桶容量
+  capacity: 200

@@ -2,7 +2,7 @@
  * @Date: 2026-04-01 22:02:21
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-21 15:15:46
+ * @LastEditTime: 2026-04-24 13:57:47
  * @Description: 初始化管理员用户和角色策略
  */
 package common
@@ -76,7 +76,7 @@ func InitAdmin(db *gorm.DB) {
 		},
 		{
 			Model:    gorm.Model{ID: 2},
-			Name:     "Users",
+			Name:     "users",
 			Title:    "用户管理",
 			Icon:     &usersIconStr,
 			Path:     "users",
@@ -87,7 +87,7 @@ func InitAdmin(db *gorm.DB) {
 		},
 		{
 			Model:    gorm.Model{ID: 3},
-			Name:     "Roles",
+			Name:     "roles",
 			Title:    "角色管理",
 			Icon:     &rolesIconStr,
 			Path:     "roles",
@@ -98,7 +98,7 @@ func InitAdmin(db *gorm.DB) {
 		},
 		{
 			Model:    gorm.Model{ID: 4},
-			Name:     "Resources",
+			Name:     "resources",
 			Title:    "资源管理",
 			Icon:     &menusIconStr,
 			Path:     "resources",
@@ -122,8 +122,8 @@ func InitAdmin(db *gorm.DB) {
 		},
 		{
 			Model:    gorm.Model{ID: 6},
-			Name:     "Blogs",
-			Title:    "博客管理",
+			Name:     "blogs",
+			Title:    "博客列表",
 			Icon:     &contentIconStr,
 			Path:     "blogs",
 			Type:     2,

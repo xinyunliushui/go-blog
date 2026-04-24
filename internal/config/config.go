@@ -2,7 +2,7 @@
  * @Date: 2026-03-23 21:59:35
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-22 17:07:01
+ * @LastEditTime: 2026-04-24 16:01:34
  * @Description:
  */
 package config
@@ -24,6 +24,7 @@ type config struct {
 	Mysql       *mysqlConfig
 	Jwt         *jwt
 	Logs        *logs
+	RateLimit   *RateLimitConfig
 }
 
 // 应用配置
@@ -70,6 +71,12 @@ type logs struct {
 	MaxBackups int    `mapstructure:"max-backups" yaml:"max-backups"`
 	MaxAge     int    `mapstructure:"max-age" yaml:"max-age"`
 	Compress   bool   `mapstructure:"compress" yaml:"compress"`
+}
+
+// 限流配置
+type RateLimitConfig struct {
+	FillInterval int64 `mapstructure:"fill-interval" json:"fillInterval"`
+	Capacity     int64 `mapstructure:"capacity" json:"capacity"`
 }
 
 /**
