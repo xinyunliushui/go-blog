@@ -1,3 +1,10 @@
+/*
+ * @Date: 2026-04-02 22:09:11
+ * @Author: zhongwenhao
+ * @LastEditors: zhongwenhao
+ * @LastEditTime: 2026-04-24 10:48:42
+ * @Description: 角色控制器接口实现
+ */
 package controller
 
 import (
@@ -32,6 +39,10 @@ func NewRoleController() IRoleController {
 	}
 }
 
+/** 获取角色列表
+ * @param ctx *gin.Context 上下文
+ * @return void
+ */
 func (rc RoleController) GetRoles(ctx *gin.Context) {
 	var req vo.RoleListRequest
 	// 参数绑定
@@ -54,7 +65,10 @@ func (rc RoleController) GetRoles(ctx *gin.Context) {
 	response.Success(ctx, gin.H{"content": dto.ToRolesDto(roles), "total": total, "page": req.Page, "pageSize": req.PageSize}, "获取角色列表成功")
 }
 
-// 创建角色
+/** 创建角色
+ * @param ctx *gin.Context 上下文
+ * @return void
+ */
 func (rc RoleController) CreateRole(ctx *gin.Context) {
 	var req vo.CreateRoleRequest
 	// 参数绑定
@@ -101,7 +115,10 @@ func (rc RoleController) CreateRole(ctx *gin.Context) {
 
 }
 
-// 更新角色
+/** 通过ID更新角色
+ * @param ctx *gin.Context 上下文
+ * @return void
+ */
 func (rc RoleController) UpdateRoleById(ctx *gin.Context) {
 	var req vo.CreateRoleRequest
 	// 参数绑定
@@ -170,7 +187,10 @@ func (rc RoleController) UpdateRoleById(ctx *gin.Context) {
 	response.Success(ctx, nil, "更新角色成功")
 }
 
-// 获取角色的权限菜单
+/** 获取角色的权限菜单
+ * @param ctx *gin.Context 上下文
+ * @return void
+ */
 func (rc RoleController) GetRoleMenusById(ctx *gin.Context) {
 	roleId, _ := strconv.Atoi(ctx.Param("roleId"))
 	if roleId <= 0 {
@@ -185,7 +205,10 @@ func (rc RoleController) GetRoleMenusById(ctx *gin.Context) {
 	response.Success(ctx, gin.H{"menus": menus}, "获取角色的权限菜单成功")
 }
 
-// 更新角色的权限菜单
+/** 更新角色的权限菜单
+ * @param ctx *gin.Context 上下文
+ * @return void
+ */
 func (rc RoleController) UpdateRoleMenusById(ctx *gin.Context) {
 	var req vo.UpdateRoleMenusRequest
 	// 参数绑定

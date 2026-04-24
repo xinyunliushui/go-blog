@@ -31,7 +31,10 @@ func NewMenuRepository() IMenuRepository {
 	return MenuRepository{}
 }
 
-// 根据用户ID获取用户的权限(可访问)菜单列表
+/** 根据用户ID获取用户的权限(可访问)菜单列表
+ * @param userId uint 用户ID
+ * @return []*model.Menu, error
+ */
 func (m MenuRepository) GetUserMenusByUserId(userId uint) ([]*model.Menu, error) {
 	// 获取用户
 	var user model.User
@@ -81,7 +84,10 @@ func (m MenuRepository) GetUserMenusByUserId(userId uint) ([]*model.Menu, error)
 	return accessMenus, err
 }
 
-// 根据用户ID获取用户的权限(可访问)菜单树
+/** 根据用户ID获取用户的权限(可访问)菜单树
+ * @param userId uint 用户ID
+ * @return []dto.MenuDto, error
+ */
 func (m MenuRepository) GetUserMenuTreeByUserId(userId uint) ([]dto.MenuDto, error) {
 	menus, err := m.GetUserMenusByUserId(userId)
 	if err != nil {
@@ -91,7 +97,11 @@ func (m MenuRepository) GetUserMenuTreeByUserId(userId uint) ([]dto.MenuDto, err
 	return tree, err
 }
 
-// 创建菜单树
+/** 创建菜单树
+ * @param parentId uint 父菜单ID
+ * @param menus []*model.Menu 菜单列表
+ * @return []dto.MenuDto
+ */
 func GenMenuTreeDto(parentId uint, menus []*model.Menu) []dto.MenuDto {
 	tree := make([]dto.MenuDto, 0)
 	for _, m := range menus {
@@ -105,23 +115,38 @@ func GenMenuTreeDto(parentId uint, menus []*model.Menu) []dto.MenuDto {
 	return tree
 }
 
+/** 获取菜单列表
+ * @return []*model.Menu, error
+ */
 func (m MenuRepository) GetMenus() ([]*model.Menu, error) {
 	var menus []*model.Menu
 	err := common.DB.Order("sort").Find(&menus).Error
 	return menus, err
 }
 
+/** 获取菜单树
+ * @return []dto.MenuDto, error
+ */
 func (m MenuRepository) GetMenuTree() ([]dto.MenuDto, error) {
 	menus, err := m.GetMenus()
 	tree := GenMenuTreeDto(0, menus)
 	return tree, err
 }
 
+/** 创建菜单
+ * @param menu *model.Menu 菜单
+ * @return error
+ */
 func (m MenuRepository) CreateMenu(menu *model.Menu) error {
 	err := common.DB.Create(menu).Error
 	return err
 }
 
+/** 通过ID更新菜单
+ * @param menuId uint 菜单ID
+ * @param menu *model.Menu 菜单
+ * @return error
+ */
 func (m MenuRepository) UpdateMenuById(menuId uint, menu *model.Menu) error {
 	err := common.DB.Model(&model.Menu{}).Where("id = ?", menuId).Updates(menu).Error
 	return err

@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 初始化角色路由
 func InitRoleRoutes(apiGroup *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddleware) gin.IRoutes {
 	roleController := controller.NewRoleController()
 	roleRouter := apiGroup.Group("/role")

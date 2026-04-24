@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:07:36
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-13 17:37:28
+ * @LastEditTime: 2026-04-24 10:58:26
  * @Description: user routes
  */
 package routes
@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 初始化用户路由
 func InitUserRoutes(apiGroup *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddleware) gin.IRoutes {
 	userController := controller.NewUserController()
 	userRouter := apiGroup.Group("/user")

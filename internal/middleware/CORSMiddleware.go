@@ -17,8 +17,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CORS跨域中间件。
-// 说明：带 credentials 的请求不能使用 Allow-Origin: *，须为具体 Origin。
+/** CORS跨域中间件 说明：带 credentials 的请求不能使用 Allow-Origin: *，须为具体 Origin。
+ * @return gin.HandlerFunc CORS跨域中间件
+ */
 func CORSMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		method := ctx.Request.Method

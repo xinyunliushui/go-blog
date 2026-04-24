@@ -17,7 +17,10 @@ import (
 	"os"
 )
 
-// 从文件中读取RSA key
+/** 从文件中读取RSA key
+ * @param filename string 文件名
+ * @return []byte RSA key
+ */
 func RSAReadKeyFromFile(filename string) []byte {
 	f, err := os.Open(filename)
 	var b []byte
@@ -32,7 +35,12 @@ func RSAReadKeyFromFile(filename string) []byte {
 	return b
 }
 
-// RSA加密
+/** RSA加密
+ * @param data []byte 数据
+ * @param publicBytes []byte RSA公钥
+ * @return []byte 加密后的数据
+ * @return error 错误
+ */
 func RSAEncrypt(data, publicBytes []byte) ([]byte, error) {
 	var res []byte
 	// 解析公钥
@@ -58,7 +66,12 @@ func RSAEncrypt(data, publicBytes []byte) ([]byte, error) {
 	return []byte(EncodeStr2Base64(string(res))), nil
 }
 
-// 对数据进行解密操作
+/** 对数据进行解密操作
+ * @param base64Data []byte base64数据
+ * @param privateBytes []byte RSA私钥
+ * @return []byte 解密后的数据
+ * @return error 错误
+ */
 func RSADecrypt(base64Data, privateBytes []byte) ([]byte, error) {
 	var res []byte
 	// 将base64数据解析
@@ -80,12 +93,18 @@ func RSADecrypt(base64Data, privateBytes []byte) ([]byte, error) {
 	return res, nil
 }
 
-// 加密base64字符串
+/** 加密base64字符串
+ * @param str string 字符串
+ * @return string base64字符串
+ */
 func EncodeStr2Base64(str string) string {
 	return base64.StdEncoding.EncodeToString([]byte(str))
 }
 
-// 解密base64字符串
+/** 解密base64字符串
+ * @param str string base64字符串
+ * @return string 解密后的字符串
+ */
 func DecodeStrFromBase64(str string) string {
 	decodeBytes, _ := base64.StdEncoding.DecodeString(str)
 	return string(decodeBytes)

@@ -9,7 +9,7 @@ package dto
 
 import "go-blog/internal/model"
 
-// 返回给前端的当前用户信息
+// 当前用户信息DTO
 type UserInfoDto struct {
 	ID           uint   `json:"id"`
 	Username     string `json:"username"`
@@ -20,6 +20,10 @@ type UserInfoDto struct {
 	RoleIds      []uint `json:"roleIds"`
 }
 
+/** 将用户转换为当前用户信息DTO
+ * @param user model.User 用户
+ * @return UserInfoDto
+ */
 func ToUserInfoDto(user model.User) UserInfoDto {
 	// 角色色处理
 	roleIds := make([]uint, 0)
@@ -50,6 +54,10 @@ type UsersDto struct {
 	RoleIds      []uint `json:"roleIds"`
 }
 
+/** 将用户列表转换为用户DTO列表
+ * @param userList []model.User 用户列表
+ * @return []UsersDto
+ */
 func ToUsersDto(userList []model.User) []UsersDto {
 	var users []UsersDto
 	for _, user := range userList {

@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 初始化菜单路由
 func InitMenuRoutes(apiGroup *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddleware) gin.IRoutes {
 	menuController := controller.NewMenuController()
 	menuRouter := apiGroup.Group("/menu")

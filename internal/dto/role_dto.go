@@ -11,7 +11,7 @@ import (
 	"go-blog/internal/model"
 )
 
-// 返还给前端的角色数据结构
+// 角色DTO
 type RoleDto struct {
 	ID          uint   `json:"id"`
 	Name        string `json:"name"`
@@ -26,6 +26,10 @@ type RoleDto struct {
 
 const roleDateTimeLayout = "2006-01-02 15:04:05"
 
+/** 将角色列表转换为角色DTO列表
+ * @param roleList []*model.Role 角色列表
+ * @return []RoleDto
+ */
 func ToRolesDto(roleList []*model.Role) []RoleDto {
 	var roles []RoleDto
 	for _, role := range roleList {

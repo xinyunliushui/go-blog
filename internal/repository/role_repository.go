@@ -2,8 +2,8 @@
  * @Date: 2026-04-02 22:10:45
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-21 09:30:01
- * @Description:
+ * @LastEditTime: 2026-04-24 10:55:36
+ * @Description: 角色仓库
  */
 package repository
 
@@ -28,6 +28,10 @@ func NewRoleRepository() IRoleRepository {
 	return RoleRepository{}
 }
 
+/** 获取角色列表
+ * @param req *vo.RoleListRequest 角色列表请求
+ * @return []*model.Role, int64, error
+ */
 func (r RoleRepository) GetRoles(req *vo.RoleListRequest) ([]*model.Role, int64, error) {
 	var list []*model.Role
 	db := common.DB.Model(&model.Role{}).Order("sort ASC")
@@ -48,33 +52,49 @@ func (r RoleRepository) GetRoles(req *vo.RoleListRequest) ([]*model.Role, int64,
 	return list, total, err
 }
 
-// 根据角色ID获取角色
+/** 根据角色ID获取角色
+ * @param roleIds []uint 角色ID列表
+ * @return []*model.Role, error
+ */
 func (r RoleRepository) GetRolesByIds(roleIds []uint) ([]*model.Role, error) {
 	var list []*model.Role
 	err := common.DB.Where("id IN (?)", roleIds).Find(&list).Error
 	return list, err
 }
 
-// 获取角色的权限菜单
+/** 获取角色的权限菜单
+ * @param roleId uint 角色ID
+ * @return []*model.Menu, error
+ */
 func (r RoleRepository) GetRoleMenusById(roleId uint) ([]*model.Menu, error) {
 	var role model.Role
 	err := common.DB.Where("id = ?", roleId).Preload("Menus").First(&role).Error
 	return role.Menus, err
 }
 
-// 创建角色
+/** 创建角色
+ * @param role *model.Role 角色
+ * @return error
+ */
 func (r RoleRepository) CreateRole(role *model.Role) error {
 	err := common.DB.Create(role).Error
 	return err
 }
 
-// 更新角色
+/** 通过ID更新角色
+ * @param roleId uint 角色ID
+ * @param role *model.Role 角色
+ * @return error
+ */
 func (r RoleRepository) UpdateRoleById(roleId uint, role *model.Role) error {
 	err := common.DB.Model(&model.Role{}).Where("id = ?", roleId).Updates(role).Error
 	return err
 }
 
-// 更新角色的权限菜单
+/** 更新角色的权限菜单
+ * @param role *model.Role 角色
+ * @return error
+ */
 func (r RoleRepository) UpdateRoleMenus(role *model.Role) error {
 	err := common.DB.Model(role).Association("Menus").Replace(role.Menus)
 	return err

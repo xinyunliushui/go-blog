@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 11:23:34
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-03-25 14:09:29
+ * @LastEditTime: 2026-04-24 11:02:35
  * @Description:
  */
 
@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// 角色模型结构体
 type Role struct {
 	gorm.Model
 	Name    string  `gorm:"type:varchar(20);not null;unique" json:"name"`

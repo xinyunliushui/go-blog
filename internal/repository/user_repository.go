@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:44:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-21 17:28:07
+ * @LastEditTime: 2026-04-24 10:55:52
  * @Description: repository layer for user
  */
 package repository
@@ -40,6 +40,10 @@ func NewUserRepository() IUserRepository {
 	return UserRepository{}
 }
 
+/** 获取用户列表
+ * @param req *vo.UserListRequest 用户列表请求
+ * @return []model.User, int64, error
+ */
 func (ur UserRepository) GetUsers(req *vo.UserListRequest) ([]model.User, int64, error) {
 
 	var list []model.User
@@ -65,6 +69,10 @@ func (ur UserRepository) GetUsers(req *vo.UserListRequest) ([]model.User, int64,
 	return list, total, err
 }
 
+/** 登录
+ * @param user *model.User 用户
+ * @return *model.User, error
+ */
 func (ur UserRepository) Login(user *model.User) (*model.User, error) {
 	// 根据用户名获取用户(正常状态:用户状态正常)
 	var firstUser model.User
@@ -89,6 +97,10 @@ func (ur UserRepository) Login(user *model.User) (*model.User, error) {
 	return &firstUser, nil
 }
 
+/** 获取当前登录用户信息
+ * @param c *gin.Context 上下文
+ * @return model.User, error
+ */
 func (ur UserRepository) GetCurrentUser(c *gin.Context) (model.User, error) {
 	var newUser model.User
 	ctxUser, exist := c.Get("user")
@@ -104,20 +116,30 @@ func (ur UserRepository) GetCurrentUser(c *gin.Context) (model.User, error) {
 	return user, err
 }
 
-// 获取单个用户信息
+/** 获取单个用户信息
+ * @param id uint 用户ID
+ * @return model.User, error
+ */
 func (ur UserRepository) GetUserById(id uint) (model.User, error) {
 	var user model.User
 	err := common.DB.Where("id = ?", id).Preload("Roles").First(&user).Error
 	return user, err
 }
 
-// 创建用户
+/** 创建用户
+ * @param user *model.User 用户
+ * @return error
+ */
 func (ur UserRepository) CreateUser(user *model.User) error {
 	err := common.DB.Create(user).Error
 	return err
 }
 
-// 更新用户信息及其角色关联
+/** 更新用户信息及其角色关联
+ * @param id uint 用户ID
+ * @param user *model.User 用户
+ * @return error
+ */
 func (ur UserRepository) UpdateUserById(id uint, user *model.User) error {
 	err := common.Transaction(func(tx *gorm.DB) error {
 		// 1. 更新 users 表
@@ -133,7 +155,10 @@ func (ur UserRepository) UpdateUserById(id uint, user *model.User) error {
 	return err
 }
 
-// 根据用户ID获取用户角色排序最小值
+/** 根据用户ID获取用户角色排序最小值
+ * @param ids []uint 用户ID列表
+ * @return []int, error
+ */
 func (ur UserRepository) GetUserMinRoleSortsByIds(ids []uint) ([]int, error) {
 	// 根据用户ID获取用户信息
 	var userList []model.User
@@ -157,7 +182,10 @@ func (ur UserRepository) GetUserMinRoleSortsByIds(ids []uint) ([]int, error) {
 	return roleMinSortList, nil
 }
 
-// 获取当前用户角色排序最小值（最高等级角色）以及当前用户信息
+/** 获取当前用户角色排序最小值（最高等级角色）以及当前用户信息
+ * @param c *gin.Context 上下文
+ * @return uint, model.User, error
+ */
 func (ur UserRepository) GetCurrentUserMinRoleSort(c *gin.Context) (uint, model.User, error) {
 	// 获取当前用户
 	ctxUser, err := ur.GetCurrentUser(c)
@@ -177,7 +205,11 @@ func (ur UserRepository) GetCurrentUserMinRoleSort(c *gin.Context) (uint, model.
 	return currentRoleSortMin, ctxUser, nil
 }
 
-// 更新密码
+/** 更新密码
+ * @param username string 用户名
+ * @param hashNewPasswd string 新密码
+ * @return error
+ */
 func (ur UserRepository) ChangePwd(username string, hashNewPasswd string) error {
 	err := common.DB.Model(&model.User{}).Where("username = ?", username).Update("password", hashNewPasswd).Error
 	return err

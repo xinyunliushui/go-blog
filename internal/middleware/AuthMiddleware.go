@@ -2,7 +2,7 @@
  * @Date: 2026-03-31 17:07:35
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-21 15:56:31
+ * @LastEditTime: 2026-04-24 11:04:04
  * @Description: gin-jwt认证中间件
  */
 package middleware
@@ -23,7 +23,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 初始化jwt中间件
+/** 初始化jwt中间件
+ * @return *jwt.GinJWTMiddleware, error
+ */
 func InitAuth() (*jwt.GinJWTMiddleware, error) {
 	authMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
 		Realm:           config.Config.Jwt.Realm,                                 // jwt标识
@@ -45,7 +47,10 @@ func InitAuth() (*jwt.GinJWTMiddleware, error) {
 	return authMiddleware, err
 }
 
-// 有效载荷处理，自定义JWT Claims
+/** 有效载荷处理，自定义JWT Claims
+ * @param data interface{} 数据
+ * @return jwt.MapClaims JWT Claims
+ */
 func payloadFunc(data interface{}) jwt.MapClaims {
 	if v, ok := data.(map[string]interface{}); ok {
 		var user model.User
@@ -58,7 +63,10 @@ func payloadFunc(data interface{}) jwt.MapClaims {
 	return jwt.MapClaims{}
 }
 
-// 身份处理：解析jwt的Claims并提取用户信息，返回值类型map[string]interface{}与payloadFunc和authorizator的data类型必须一致, 否则会导致授权失败还不容易找到原因
+/** 身份处理：解析jwt的Claims并提取用户信息，返回值类型map[string]interface{}与payloadFunc和authorizator的data类型必须一致, 否则会导致授权失败还不容易找到原因
+ * @param c *gin.Context 上下文
+ * @return interface{} 用户信息
+ */
 func identityHandler(c *gin.Context) interface{} {
 	claims := jwt.ExtractClaims(c)
 	return map[string]interface{}{
@@ -67,7 +75,11 @@ func identityHandler(c *gin.Context) interface{} {
 	}
 }
 
-// 认证器即登录：验证用户名/密码
+/** 认证器即登录：验证用户名/密码
+ * @param c *gin.Context 上下文
+ * @return interface{} 用户信息
+ * @return error 错误
+ */
 func login(c *gin.Context) (interface{}, error) {
 	var req vo.RegisterAndLoginRequest
 	// 请求json绑定
@@ -98,7 +110,11 @@ func login(c *gin.Context) (interface{}, error) {
 	}, nil
 }
 
-// 用户登录校验成功处理
+/** 用户登录校验成功处理
+ * @param data interface{} 用户信息
+ * @param c *gin.Context 上下文
+ * @return bool 是否成功
+ */
 func authorizator(data interface{}, c *gin.Context) bool {
 	if v, ok := data.(map[string]interface{}); ok {
 		userStr := v["user"].(string)
@@ -112,12 +128,20 @@ func authorizator(data interface{}, c *gin.Context) bool {
 	return false
 }
 
-// 用户登录校验失败处理
+/** 用户登录校验失败处理
+ * @param c *gin.Context 上下文
+ * @param code int 错误码
+ * @param message string 错误信息
+ * @return void
+ */
 func unauthorized(c *gin.Context, code int, message string) {
-	// common.Log.Debugf("JWT认证失败, 错误码: %d, 错误信息: %s", code, message)
 	response.Response(c, code, code, nil, message)
 }
 
+/** 请求是否为HTTPS
+ * @param c *gin.Context 上下文
+ * @return bool 是否为HTTPS
+ */
 func requestIsHTTPS(c *gin.Context) bool {
 	if c.Request.TLS != nil {
 		return true
@@ -125,7 +149,13 @@ func requestIsHTTPS(c *gin.Context) bool {
 	return strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https")
 }
 
-// 登录成功后的响应
+/** 登录成功后的响应
+ * @param c *gin.Context 上下文
+ * @param code int 错误码
+ * @param token string token
+ * @param expires time.Time 过期时间
+ * @return void
+ */
 func loginResponse(c *gin.Context, code int, token string, expires time.Time) {
 	maxAgeSeconds := int((time.Hour * time.Duration(config.Config.Jwt.Timeout)).Seconds())
 	secure := requestIsHTTPS(c)
@@ -140,12 +170,22 @@ func loginResponse(c *gin.Context, code int, token string, expires time.Time) {
 		"登录成功")
 }
 
-// 登出后的响应
+/** 登出后的响应
+ * @param c *gin.Context 上下文
+ * @param code int 错误码
+ * @return void
+ */
 func logoutResponse(c *gin.Context, code int) {
 	response.Success(c, nil, "退出成功")
 }
 
-// 刷新token后的响应
+/** 刷新token后的响应
+ * @param c *gin.Context 上下文
+ * @param code int 错误码
+ * @param token string token
+ * @param expires time.Time 过期时间
+ * @return void
+ */
 func refreshResponse(c *gin.Context, code int, token string, expires time.Time) {
 	response.Response(c, code, code,
 		gin.H{

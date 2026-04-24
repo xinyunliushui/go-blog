@@ -1,3 +1,10 @@
+/*
+ * @Date: 2026-04-22 17:42:02
+ * @Author: zhongwenhao
+ * @LastEditors: zhongwenhao
+ * @LastEditTime: 2026-04-24 10:51:03
+ * @Description: 文章DTO
+ */
 package dto
 
 import (
@@ -5,6 +12,7 @@ import (
 	"time"
 )
 
+// 文章DTO
 type BlogDto struct {
 	ID          uint       `json:"id"`
 	Title       string     `json:"title"`
@@ -18,6 +26,10 @@ type BlogDto struct {
 	PublishedAt *time.Time `json:"publishedAt"`
 }
 
+/** 将文章列表转换为文章DTO列表
+ * @param blogs 文章列表
+ * @return []BlogDto
+ */
 func ToBlogsDto(blogs []model.Blog) []BlogDto {
 	var blogDtos []BlogDto
 	for _, blog := range blogs {

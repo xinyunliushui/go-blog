@@ -2,8 +2,8 @@
  * @Date: 2026-04-08 21:27:02
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-13 15:37:36
- * @Description:
+ * @LastEditTime: 2026-04-24 10:48:29
+ * @Description: 菜单控制器接口实现
  */
 package controller
 
@@ -37,7 +37,10 @@ func NewMenuController() IMenuController {
 	}
 }
 
-// 根据用户ID获取用户的可访问菜单树
+/** 根据用户ID获取用户的可访问菜单树
+ * @param c *gin.Context 上下文
+ * @return void
+ */
 func (mc MenuController) GetUserMenuTreeByUserId(c *gin.Context) {
 	// 获取路径中的userId
 	userId, _ := strconv.Atoi(c.Param("userId"))
@@ -54,6 +57,10 @@ func (mc MenuController) GetUserMenuTreeByUserId(c *gin.Context) {
 	response.Success(c, menuTree, "获取用户的可访问菜单树成功")
 }
 
+/** 获取菜单列表
+ * @param c *gin.Context 上下文
+ * @return void
+ */
 func (mc MenuController) GetMenus(c *gin.Context) {
 	menus, err := mc.MenuRepository.GetMenus()
 	if err != nil {
@@ -63,6 +70,10 @@ func (mc MenuController) GetMenus(c *gin.Context) {
 	response.Success(c, dto.ToMenuListDto(menus), "获取菜单列表成功")
 }
 
+/** 创建菜单
+ * @param c *gin.Context 上下文
+ * @return void
+ */
 func (mc MenuController) CreateMenu(c *gin.Context) {
 	var req vo.CreateMenuRequest
 	// 参数绑定
@@ -105,7 +116,10 @@ func (mc MenuController) CreateMenu(c *gin.Context) {
 	response.Success(c, nil, "创建菜单成功")
 }
 
-// 获取应用下的菜单列表
+/** 获取应用下的菜单列表
+ * @param c *gin.Context 上下文
+ * @return void
+ */
 func (mc MenuController) GetMenuTree(c *gin.Context) {
 	menuTree, err := mc.MenuRepository.GetMenuTree()
 	if err != nil {
@@ -115,6 +129,10 @@ func (mc MenuController) GetMenuTree(c *gin.Context) {
 	response.Success(c, menuTree, "获取菜单树成功")
 }
 
+/** 通过ID更新菜单
+ * @param c *gin.Context 上下文
+ * @return void
+ */
 func (mc MenuController) UpdateMenuById(c *gin.Context) {
 	// 获取路径中的menuId
 	menuId, _ := strconv.Atoi(c.Param("menuId"))

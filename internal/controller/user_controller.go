@@ -3,7 +3,7 @@
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
  * @LastEditTime: 2026-04-21 17:27:21
- * @Description: user controller
+ * @Description: 用户控制器接口实现
  */
 package controller
 
@@ -34,13 +34,16 @@ type UserController struct {
 	UserRepository repository.IUserRepository
 }
 
-// 构造函数
 func NewUserController() IUserController {
 	return UserController{
 		UserRepository: repository.NewUserRepository(),
 	}
 }
 
+/** 获取当前登录用户信息
+ * @param ctx *gin.Context 上下文
+ * @return void
+ */
 func (uc UserController) GetUserInfo(ctx *gin.Context) {
 	user, err := uc.UserRepository.GetCurrentUser(ctx)
 	if err != nil {
@@ -51,10 +54,9 @@ func (uc UserController) GetUserInfo(ctx *gin.Context) {
 	response.Success(ctx, dto.ToUserInfoDto(user), "获取用户信息成功")
 }
 
-/**
- * @description: 获取用户列表
- * @param {*} ctx
- * @return {*}
+/** 获取用户列表
+ * @param ctx *gin.Context 上下文
+ * @return void
  */
 func (uc UserController) GetUsers(ctx *gin.Context) {
 	var req vo.UserListRequest
@@ -76,7 +78,10 @@ func (uc UserController) GetUsers(ctx *gin.Context) {
 	response.Success(ctx, gin.H{"content": dto.ToUsersDto(users), "total": total, "page": req.Page, "pageSize": req.PageSize}, "获取用户列表成功")
 }
 
-// 创建用户
+/** 创建用户
+ * @param ctx *gin.Context 上下文
+ * @return void
+ */
 func (uc UserController) CreateUser(ctx *gin.Context) {
 	var req vo.CreateOrUpdateUserRequest
 	// 参数绑定
@@ -132,6 +137,10 @@ func (uc UserController) CreateUser(ctx *gin.Context) {
 	response.Success(ctx, nil, "创建用户成功")
 }
 
+/** 通过ID更新用户
+ * @param ctx *gin.Context 上下文
+ * @return void
+ */
 func (uc UserController) UpdateUserById(ctx *gin.Context) {
 	userId, _ := strconv.Atoi(ctx.Param("userId"))
 	if userId <= 0 {
@@ -278,7 +287,10 @@ func (uc UserController) UpdateUserById(ctx *gin.Context) {
 
 }
 
-// 更新用户登录密码
+/** 更新用户登录密码
+ * @param ctx *gin.Context 上下文
+ * @return void
+ */
 func (uc UserController) ChangePwd(ctx *gin.Context) {
 	var req vo.ChangePwdRequest
 

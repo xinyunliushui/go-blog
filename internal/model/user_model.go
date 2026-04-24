@@ -2,7 +2,7 @@
  * @Date: 2026-03-23 22:45:58
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-01 22:10:17
+ * @LastEditTime: 2026-04-24 11:02:42
  * @Description:
  */
 
@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// 用户模型结构体
 type User struct {
 	gorm.Model
 	Username     string  `gorm:"type:varchar(20);not null;unique" json:"username"`

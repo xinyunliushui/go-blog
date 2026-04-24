@@ -2,6 +2,7 @@ package dto
 
 import "go-blog/internal/model"
 
+// 菜单DTO
 type MenuDto struct {
 	ID       uint      `json:"id"`
 	Name     string    `json:"name"`
@@ -17,7 +18,10 @@ type MenuDto struct {
 	Children []MenuDto `json:"children"`
 }
 
-// ToMenuTreeDto 将 model tree菜单树转为前端 DTO；递归处理 Children。
+/** 将菜单树转换为菜单DTO树
+ * @param menus []*model.Menu 菜单列表
+ * @return []MenuDto
+ */
 func ToMenuTreeDto(menus []*model.Menu) []MenuDto {
 	if len(menus) == 0 {
 		return nil
@@ -48,7 +52,10 @@ func ToMenuTreeDto(menus []*model.Menu) []MenuDto {
 	return tree
 }
 
-// ToMenuDto 将 model 菜单转为前端 DTO。
+/** 将菜单转换为菜单DTO
+ * @param menu *model.Menu 菜单
+ * @return MenuDto
+ */
 func ToMenuDto(menu *model.Menu) MenuDto {
 	return MenuDto{
 		ID:       menu.ID,
@@ -65,6 +72,10 @@ func ToMenuDto(menu *model.Menu) MenuDto {
 	}
 }
 
+/** 将菜单列表转换为菜单DTO列表
+ * @param menus []*model.Menu 菜单列表
+ * @return []MenuDto
+ */
 func ToMenuListDto(menus []*model.Menu) []MenuDto {
 	list := make([]MenuDto, 0)
 	for _, menu := range menus {

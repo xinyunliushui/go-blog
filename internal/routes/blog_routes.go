@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 初始化博客路由
 func InitBlogRoutes(apiGroup *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddleware) gin.IRoutes {
 	blogController := controller.NewBlogController()
 	// 公开路由：不需要登录录认证

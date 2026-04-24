@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// 菜单模型结构体
 type Menu struct {
 	gorm.Model
 	Name     string  `gorm:"type:varchar(50);comment:'名称(英文名)'" json:"name"`

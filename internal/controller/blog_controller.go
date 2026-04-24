@@ -3,7 +3,7 @@
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
  * @LastEditTime: 2026-04-23 17:04:08
- * @Description: blog controller
+ * @Description: 文章控制器接口实现
  */
 package controller
 
@@ -55,7 +55,7 @@ func (bc BlogController) GetBlogs(ctx *gin.Context) {
 	if err != nil {
 		response.Fail(ctx, nil, "获取文章列表失败")
 	}
-	response.Success(ctx, gin.H{"content": dto.ToBlogsDto(blogs), "total": total, "page": req.Page, "pageSize": req.PageSize}, "获取用户列表成功")
+	response.Success(ctx, gin.H{"content": dto.ToBlogsDto(blogs), "total": total, "page": req.Page, "pageSize": req.PageSize}, "获取文章列表成功")
 }
 
 // 获取文章详情

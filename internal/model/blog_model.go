@@ -2,7 +2,7 @@
  * @Date: 2026-04-22 15:33:08
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-23 11:20:49
+ * @LastEditTime: 2026-04-24 11:02:06
  * @Description: 博客模型
  */
 package model
@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// 博客模型结构体
 type Blog struct {
 	gorm.Model
 	Title       string     `gorm:"type:varchar(100);not null;comment:'标题'"  json:"title"`
