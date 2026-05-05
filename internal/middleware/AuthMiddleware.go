@@ -28,10 +28,10 @@ import (
  */
 func InitAuth() (*jwt.GinJWTMiddleware, error) {
 	authMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
-		Realm:           config.Config.Jwt.Realm,                                 // jwt标识
-		Key:             []byte(config.Config.Jwt.Key),                           // 服务端密钥
-		Timeout:         time.Hour * time.Duration(config.Config.Jwt.Timeout),    // token过期时间
-		MaxRefresh:      time.Hour * time.Duration(config.Config.Jwt.MaxRefresh), // token最大刷新时间(RefreshToken过期时间=Timeout+MaxRefresh)
+		Realm:           config.Conf.Jwt.Realm,                                 // jwt标识
+		Key:             []byte(config.Conf.Jwt.Key),                           // 服务端密钥
+		Timeout:         time.Hour * time.Duration(config.Conf.Jwt.Timeout),    // token过期时间
+		MaxRefresh:      time.Hour * time.Duration(config.Conf.Jwt.MaxRefresh), // token最大刷新时间(RefreshToken过期时间=Timeout+MaxRefresh)
 		PayloadFunc:     payloadFunc,                                             // 有效载荷处理
 		IdentityHandler: identityHandler,                                         // 解析Claims
 		Authenticator:   login,                                                   // 校验token的正确性, 处理登录逻辑
@@ -88,7 +88,7 @@ func login(c *gin.Context) (interface{}, error) {
 	}
 
 	// 密码通过RSA解密
-	decodeData, err := utils.RSADecrypt([]byte(req.Password), config.Config.Application.RSAPrivateBytes)
+	decodeData, err := utils.RSADecrypt([]byte(req.Password), config.Conf.Application.RSAPrivateBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func requestIsHTTPS(c *gin.Context) bool {
  * @return void
  */
 func loginResponse(c *gin.Context, code int, token string, expires time.Time) {
-	maxAgeSeconds := int((time.Hour * time.Duration(config.Config.Jwt.Timeout)).Seconds())
+	maxAgeSeconds := int((time.Hour * time.Duration(config.Conf.Jwt.Timeout)).Seconds())
 	secure := requestIsHTTPS(c)
 	// 与 SPA 同机开发时请用 localhost 访问前后端，避免 localhost 与 127.0.0.1 混用导致浏览器不写 Cookie
 	c.SetSameSite(http.SameSiteLaxMode)

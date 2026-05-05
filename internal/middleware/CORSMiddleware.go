@@ -26,7 +26,7 @@ func CORSMiddleware() gin.HandlerFunc {
 		origin := strings.TrimSpace(ctx.Request.Header.Get("Origin"))
 		// 从配置名单中加载允许的跨域请求源
 		allowOrigin := ""
-		allowed := config.Config.Application.CorsAllowOrigins
+		allowed := config.Conf.Application.CorsAllowOrigins
 		if len(allowed) > 0 {
 			if origin != "" && slices.Contains(allowed, origin) {
 				allowOrigin = origin

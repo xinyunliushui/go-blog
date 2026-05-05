@@ -22,7 +22,7 @@ func InitRoutes() {
 	router.Use(middleware.CORSMiddleware())
 
 	// api分组
-	apiGroup := router.Group("/" + config.Config.Application.UrlPathPrefix)
+	apiGroup := router.Group("/" + config.Conf.Application.UrlPathPrefix)
 	// 初始化JWT认证中间件
 	authMiddleware, err := middleware.InitAuth()
 	if err != nil {

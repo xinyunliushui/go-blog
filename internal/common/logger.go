@@ -48,7 +48,7 @@ func InitLogger() {
 		return level < zap.ErrorLevel && level >= zap.DebugLevel
 	})
 	// 当yml配置中的等级大于Error时，lowPriority级别日志停止记录
-	if config.Config.Logs.Level >= 2 {
+	if config.Conf.Logs.Level >= 2 {
 		lowPriority = zap.LevelEnablerFunc(func(level zapcore.Level) bool {
 			return false
 		})
@@ -104,14 +104,14 @@ func getEncoder() zapcore.Encoder {
  */
 func getInfoWriteSyncer() zapcore.WriteSyncer {
 	now := time.Now()
-	infoLogFileName := fmt.Sprintf("%s/info/%04d-%02d-%02d.log", config.Config.Logs.Path, now.Year(), now.Month(), now.Day())
+	infoLogFileName := fmt.Sprintf("%s/info/%04d-%02d-%02d.log", config.Conf.Logs.Path, now.Year(), now.Month(), now.Day())
 	return zapcore.AddSync(&lumberjack.Logger{
 		Filename:   infoLogFileName,               //日志文件存放目录，如果文件夹不存在会自动创建
-		MaxSize:    config.Config.Logs.MaxSize,    //文件大小限制,单位MB
-		MaxAge:     config.Config.Logs.MaxAge,     //日志文件保留天数
-		MaxBackups: config.Config.Logs.MaxBackups, //最大保留日志文件数量
+		MaxSize:    config.Conf.Logs.MaxSize,    //文件大小限制,单位MB
+		MaxAge:     config.Conf.Logs.MaxAge,     //日志文件保留天数
+		MaxBackups: config.Conf.Logs.MaxBackups, //最大保留日志文件数量
 		LocalTime:  false,
-		Compress:   config.Config.Logs.Compress, //是否压缩处理
+		Compress:   config.Conf.Logs.Compress, //是否压缩处理
 	})
 }
 
@@ -120,13 +120,13 @@ func getInfoWriteSyncer() zapcore.WriteSyncer {
  */
 func getErrorWriteSyncer() zapcore.WriteSyncer {
 	now := time.Now()
-	errorLogFileName := fmt.Sprintf("%s/error/%04d-%02d-%02d.log", config.Config.Logs.Path, now.Year(), now.Month(), now.Day())
+	errorLogFileName := fmt.Sprintf("%s/error/%04d-%02d-%02d.log", config.Conf.Logs.Path, now.Year(), now.Month(), now.Day())
 	return zapcore.AddSync(&lumberjack.Logger{
 		Filename:   errorLogFileName,              //日志文件存放目录
-		MaxSize:    config.Config.Logs.MaxSize,    //文件大小限制,单位MB
-		MaxAge:     config.Config.Logs.MaxAge,     //日志文件保留天数
-		MaxBackups: config.Config.Logs.MaxBackups, //最大保留日志文件数量
+		MaxSize:    config.Conf.Logs.MaxSize,    //文件大小限制,单位MB
+		MaxAge:     config.Conf.Logs.MaxAge,     //日志文件保留天数
+		MaxBackups: config.Conf.Logs.MaxBackups, //最大保留日志文件数量
 		LocalTime:  false,
-		Compress:   config.Config.Logs.Compress, //是否压缩处理
+		Compress:   config.Conf.Logs.Compress, //是否压缩处理
 	})
 }

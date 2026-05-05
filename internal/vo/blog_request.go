@@ -29,3 +29,11 @@ type UpdateBlogPublishStatusRequest struct {
 	// 1草稿, 2发布, 3私密，草稿是默认态
 	Status uint `json:"status" validate:"required,oneof=2 3"`
 }
+
+// 搜索文章请求结构体
+type SearchBlogRequest struct {
+	PaginationRequest
+	Keyword string `json:"keyword" form:"keyword"`
+}
+
+//

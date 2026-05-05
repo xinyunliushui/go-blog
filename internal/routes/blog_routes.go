@@ -2,7 +2,7 @@
  * @Date: 2026-04-22 15:58:00
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-24 16:07:09
+ * @LastEditTime: 2026-05-05 16:34:06
  * @Description: 博客路由
  */
 package routes
@@ -24,12 +24,13 @@ func InitBlogRoutes(apiGroup *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddlew
 	blogPublicRouter := apiGroup.Group("/blog")
 	// 启用限流中间
 	// 默认每50毫秒填充一个令牌，最多填充200个
-	fillInterval := time.Duration(config.Config.RateLimit.FillInterval)
-	capacity := config.Config.RateLimit.Capacity
+	fillInterval := time.Duration(config.Conf.RateLimit.FillInterval)
+	capacity := config.Conf.RateLimit.Capacity
 	blogPublicRouter.Use(middleware.RateLimitMiddleware(fillInterval, capacity))
 	{
 		blogPublicRouter.GET("/list", blogController.GetBlogs)
 		blogPublicRouter.GET("/detail/:blogId", blogController.GetBlogById)
+		blogPublicRouter.GET("/search", blogController.SearchBlogs)
 	}
 	// 管理路由：需要登录认证
 	blogRouter := apiGroup.Group("/blog")

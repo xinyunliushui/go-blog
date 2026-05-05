@@ -1,12 +1,77 @@
 # 开发环境覆盖配置（基于 config.yml merge）
 # mysql配置
 mysql:
+  # 用户名
   username: root
+  # 密码
   password: blogY1Jo)%
+  # 数据库名
   database: go_blog
+  # 主机地址
   host: localhost
+  # 端口
   port: 3306
+  # 连接字符串参数
   query: parseTime=True&loc=Local&timeout=10000ms
+  # 是否打印日志
   log_mode: true
+  # 编码方式
   charset: utf8mb4
+  # 字符集(utf8mb4_general_ci速度比utf8mb4_unicode_ci快些)
   collation: utf8mb4_general_ci
+# rabbitmq配置
+rabbitmq:
+  # 主机地址
+  host: localhost
+  # 端口
+  port: 5672
+  # 用户名
+  username: admin
+  # 密码
+  password: 123456
+  # 虚拟主机 类似 MySQL 的不同 Database
+  vhost: go_blog
+  # 队列名
+  queue-name: go_blog_queue
+  # 交换机名
+  exchange-name: go_blog_exchange
+  # 路由键
+  routing-key: go_blog_routing-key
+  # 交换机类型
+  exchange-type: direct
+  # 队列持久化
+  durable: true
+  # 当最后一个消费者断开连接后，队列或交换机是否自动删除 核心业务队列应设为 false
+  auto-delete: false
+  # 设置为 true 时，该队列仅对首次声明它的连接（Connection）可见，通常设为 false
+  exclusive: false
+  # 限制每次推送的消息数，防止消费者过载
+  prefetch-count: 10
+  # 自动确认消息 生产环境强烈建议设为 false,手动去确认消息成功
+  auto-ack: true
+
+# elasticsearch配置
+elastic-search:
+  # 地址
+  address: http://localhost:9200
+  # 索引名称
+  index-name: go_blog
+  # 用户名
+  username: root
+  # 密码
+  password: Z*0gbrjn17KAhO_s5X=9
+
+# clickhouse配置
+click-house:
+  # 主机地址
+  host: localhost
+  # 端口
+  port: 9000
+  # 数据库
+  database: go_blog
+  # 表名
+  table-name: blog
+  # 用户名
+  username: admin
+  # 密码
+  password: 123456

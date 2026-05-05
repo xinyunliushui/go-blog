@@ -48,3 +48,52 @@ func ToBlogsDto(blogs []model.Blog) []BlogDto {
 	}
 	return blogDtos
 }
+
+type BlogPostSource struct {
+	ID          uint       `json:"id"`
+	Title       string     `json:"title"`
+	Content     string     `json:"content"`
+	Summary     string     `json:"summary"`
+	CoverImage  string     `json:"coverImage"`
+	Category    *string    `json:"category"`
+	Tags        *string    `json:"tags"`
+	Status      uint       `json:"status"`
+	Author      string     `json:"author"`
+	PublishedAt *time.Time `json:"publishedAt"`
+	Highlight   struct {
+		Title   []string `json:"title,omitempty"`
+		Content []string `json:"content,omitempty"`
+	} `json:"highlight"`
+}
+
+/**
+ * @description: 搜索文章DTO
+ * @return {SearchBlogDto}
+ */
+type SearchBlogDto struct {
+	Took int64 `json:"took"`
+	Hits struct {
+		Total struct {
+			Value int `json:"value"`
+		} `json:"total"`
+		Hits []struct {
+			ID        string              `json:"_id"`
+			Source    BlogPostSource      `json:"_source"`
+			Highlight map[string][]string `json:"highlight,omitempty"`
+		} `json:"hits"`
+	} `json:"hits"`
+	Suggest struct {
+		SpellCheck []struct {
+			Options []struct {
+				Text string `json:"text"`
+			} `json:"options"`
+		} `json:"spell_check"`
+	} `json:"suggest"`
+}
+
+type SearchResultDTO struct {
+	Hits       []BlogPostSource `json:"hits"`
+	Total      int              `json:"total"`
+	Took       int64            `json:"took_ms"`              // ES查询耗时
+	Suggestion string           `json:"suggestion,omitempty"` // 拼写建议
+}

@@ -2,15 +2,17 @@
  * @Date: 2026-04-22 16:01:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-23 17:04:08
+ * @LastEditTime: 2026-05-05 21:16:48
  * @Description: 文章控制器接口实现
  */
 package controller
 
 import (
 	"go-blog/internal/common"
+	"go-blog/internal/config"
 	"go-blog/internal/dto"
 	"go-blog/internal/model"
+	"go-blog/internal/rabbitmq"
 	"go-blog/internal/repository"
 	"go-blog/internal/response"
 	"go-blog/internal/vo"
@@ -26,6 +28,7 @@ type IBlogController interface {
 	CreateBlog(c *gin.Context)                  // 创建文章
 	UpdateBlogPublishStatusById(c *gin.Context) // 更新文章状态
 	UpdateBlogById(c *gin.Context)              // 更新文章
+	SearchBlogs(c *gin.Context)                 // 搜索文章
 }
 
 type BlogController struct {
@@ -106,6 +109,13 @@ func (bc BlogController) CreateBlog(ctx *gin.Context) {
 		response.Fail(ctx, nil, "创建文章失败")
 		return
 	}
+
+	// 第二部分：发送消息到 RabbitMQ
+	if err := rabbitmq.PublishMessage(config.Conf.Rabbitmq.QueueName, blog); err != nil {
+		// 记录错误但不要影响主流程（可返回警告，或重试机制，此处简化）
+		response.Success(ctx, nil, "文章已保存到 MySQL，但异步写入 ES/CH 失败")
+		return
+	}
 	response.Success(ctx, nil, "创建文章成功")
 }
 
@@ -174,4 +184,26 @@ func (bc BlogController) UpdateBlogById(ctx *gin.Context) {
 		return
 	}
 	response.Success(ctx, nil, "更新文章成功")
+}
+
+// 搜索文章
+func (bc BlogController) SearchBlogs(ctx *gin.Context) {
+	var req vo.SearchBlogRequest
+	// 参数绑定
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		response.Fail(ctx, nil, common.ValidationErrString(err))
+		return
+	}
+	// 参数校验
+	if err := common.Validate.Struct(&req); err != nil {
+		response.Fail(ctx, nil, common.ValidationErrString(err))
+		return
+	}
+	searchBlogDto, err := bc.BlogRepository.SearchBlogs(&req, ctx)
+	if err != nil {
+		common.Log.Error("搜索文章失败: %v", err)
+		response.Fail(ctx, nil, "搜索文章失败")
+		return
+	}
+	response.Success(ctx, searchBlogDto, "搜索文章成功")
 }

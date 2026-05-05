@@ -26,19 +26,19 @@ var DB *gorm.DB
  */
 func InitMysql() {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&collation=%s&%s",
-		config.Config.Mysql.Username,
-		config.Config.Mysql.Password,
-		config.Config.Mysql.Host,
-		config.Config.Mysql.Port,
-		config.Config.Mysql.Database,
-		config.Config.Mysql.Charset,
-		config.Config.Mysql.Collation,
-		config.Config.Mysql.Query,
+		config.Conf.Mysql.Username,
+		config.Conf.Mysql.Password,
+		config.Conf.Mysql.Host,
+		config.Conf.Mysql.Port,
+		config.Conf.Mysql.Database,
+		config.Conf.Mysql.Charset,
+		config.Conf.Mysql.Collation,
+		config.Conf.Mysql.Query,
 	)
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 		// NamingStrategy: schema.NamingStrategy{
-		// 	TablePrefix: config.Config.Mysql.TablePrefix + "_",
+		// 	TablePrefix: config.Conf.Mysql.TablePrefix + "_",
 		// },
 	})
 
@@ -47,7 +47,7 @@ func InitMysql() {
 	}
 
 	// 开启mysql日志
-	if config.Config.Mysql.LogMode {
+	if config.Conf.Mysql.LogMode {
 		db.Debug()
 	}
 
