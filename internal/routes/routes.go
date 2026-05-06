@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:11:30
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-13 10:45:28
+ * @LastEditTime: 2026-05-06 16:45:50
  * @Description: routes
  */
 package routes
@@ -15,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func InitRoutes() {
+func InitRoutes() *gin.Engine {
 
 	router := gin.Default()
 	// 启用全局跨域中间件（需在创建路由分组前挂载）
@@ -26,7 +26,6 @@ func InitRoutes() {
 	// 初始化JWT认证中间件
 	authMiddleware, err := middleware.InitAuth()
 	if err != nil {
-		// common.Log.Panicf("初始化JWT中间件失败：%v", err)
 		panic(fmt.Sprintf("初始化JWT中间件失败：%v", err))
 	}
 
@@ -45,6 +44,5 @@ func InitRoutes() {
 	// 注册博客路由
 	InitBlogRoutes(apiGroup, authMiddleware)
 
-	// 启动
-	router.Run(":8080")
+	return router
 }

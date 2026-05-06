@@ -18,6 +18,7 @@ jwt:
   timeout: 2
   max_refresh: 2
 
+# 日志配置
 logs:
   level: 1
   path: logs

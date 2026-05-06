@@ -2,7 +2,7 @@
  * @Date: 2026-03-23 21:59:35
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-04 21:26:38
+ * @LastEditTime: 2026-05-06 16:37:33
  * @Description:
  */
 package config
@@ -46,8 +46,6 @@ type application struct {
 	RSAPrivateBytes []byte `mapstructure:"-" json:"-"`
 	// 非空时仅允许列表内 Origin 携带凭证跨域；为空则回显请求 Origin（勿在生产依赖此行为）
 	CorsAllowOrigins []string `mapstructure:"cors_allow_origins" yaml:"cors_allow_origins"`
-	// 是否初始化数据
-	InitData bool `mapstructure:"init_data" yaml:"init_data"`
 }
 
 // mysql配置

@@ -3,10 +3,11 @@
 ## 简介
 - 博客以及管理后台，前后端分离，此项目为后端服务。
 - 后端Go包含了gin、gorm、jwt、MySQL、RabbitMQ、ElasticSearch和ClickHouse等的使用。
-- 管理后台权限管理采用RBAC方案
+- 管理后台权限管理采用RBAC方案。
+- 对应的博客和管理平台[web-blog](https://github.com/xinyunliushui/web-blog)。
 
-
-## 启动前准备以下环境以及预设好对应的`database`，用户名和密码记得切换
+## 启动前准备
+以下环境以及预设好对应的`database`，用户名和密码记得切换
 - `MySQL` 需要前置创建database，名称是go_blog
 - `RabbitMQ` 需要前置创建vhost，名称是go_blog
 - `Elasticsearch` 需要前置安装好ik_max_word中文分词器
