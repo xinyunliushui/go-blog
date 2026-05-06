@@ -52,11 +52,11 @@ func InitRabbitMQ() error {
 		// 声明队列（确保队列存在）
 		_, err = channel.QueueDeclare(
 			config.Conf.Rabbitmq.QueueName, // 队列名称
-			true,                             // 是否持久化
-			false,                            // 不使用时是否自动删除
-			false,                            // 是否具有排他性
-			false,                            // 是否阻塞等待服务器处理
-			nil,                              // 额外属性
+			true,                           // 是否持久化
+			false,                          // 不使用时是否自动删除
+			false,                          // 是否具有排他性
+			false,                          // 是否阻塞等待服务器处理
+			nil,                            // 额外属性
 		)
 		if err != nil {
 			common.Log.Errorf("声明队列失败: %s", err)

@@ -8,6 +8,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"go-blog/internal/common"
 	"go-blog/internal/config"
@@ -17,32 +18,38 @@ import (
 )
 
 /**
- * @description: 消费RabbitMQ消息
- * @param {func([]byte) error} handler
- * @return {error}
+ * @description: 消费 RabbitMQ 消息；ctx 取消后退出循环并返回，便于主流程 WaitGroup 等待。
  */
-func ConsumeRabbitMQ(handler func([]byte) error) {
+func ConsumeRabbitMQ(ctx context.Context, handler func([]byte) error) {
 	msgs, err := rabbitmq.ConsumeMessage(config.Conf.Rabbitmq.QueueName, "")
 	if err != nil {
 		common.Log.Errorf("消费者注册失败: %v", err)
+		return
 	}
 
-	forever := make(chan struct{})
-	go func() {
-		for d := range msgs {
-			// 调用传入的处理函数
+	common.Log.Info("RabbitMQ 消费者已启动，等待消息...")
+	for {
+		select {
+		case <-ctx.Done():
+			common.Log.Info("RabbitMQ 消费者已退出")
+			return
+		case d, ok := <-msgs:
+			// 每收到 一条 RabbitMQ 投递，就往这个 channel 里放进 一个 Delivery
+			if !ok {
+				common.Log.Info("RabbitMQ 消费 channel 已关闭，消费者退出")
+				return
+			}
 			if err := handler(d.Body); err != nil {
 				// 处理消息失败，可选择重新入队或记录死信
-				common.Log.Errorf("处理消息失败: %v", err)
 				// 可选：nack 并重新入队，这里简单丢弃
+				common.Log.Errorf("处理消息失败: %v", err)
 				d.Nack(false, false)
 			} else {
-				d.Ack(false) // 确认成功消费
+				// 确认成功消费
+				d.Ack(false)
 			}
 		}
-	}()
-	common.Log.Info("RabbitMQ 消费者已启动，等待消息...")
-	<-forever
+	}
 }
 
 /**

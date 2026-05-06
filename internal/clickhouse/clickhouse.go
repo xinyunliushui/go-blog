@@ -43,3 +43,20 @@ func InitClickHouse() error {
 	}
 	return nil
 }
+
+// CloseClickHouse 关闭 ClickHouse 连接池，应在进程退出前调用。
+func CloseClickHouse() {
+	if ClickHouseDB == nil {
+		return
+	}
+	sqlDB, err := ClickHouseDB.DB()
+	if err != nil {
+		common.Log.Errorf("获取 ClickHouse 连接失败: %v", err)
+		return
+	}
+	if err := sqlDB.Close(); err != nil {
+		common.Log.Errorf("ClickHouse 连接关闭出错: %v", err)
+	} else {
+		common.Log.Info("ClickHouse 连接已关闭")
+	}
+}

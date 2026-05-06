@@ -2,7 +2,7 @@
  * @Date: 2026-03-18 21:50:24
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-06 17:24:19
+ * @LastEditTime: 2026-05-06 21:44:16
  * @Description: main
  */
 package main
@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -48,7 +49,6 @@ func main() {
 	if err := rabbitmq.InitRabbitMQ(); err != nil {
 		log.Fatalf("初始化 RabbitMQ 失败: %v", err)
 	}
-	defer rabbitmq.CloseRabbitMQ()
 
 	// 初始化Elasticsearch
 	if err := elasticsearch.InitESClient(); err != nil {
@@ -60,9 +60,14 @@ func main() {
 		log.Fatalf("初始化 ClickHouse 失败: %v", err)
 	}
 
-	// 启动消费者 , 消费RabbitMQ消息
+	// 启动消费者：用独立 ctx，停机时先 cancel 再等 wg，最后关闭 MQ 连接，避免泄漏 goroutine 或对已关闭连接 Ack
+	consumerCtx, stopConsumer := context.WithCancel(context.Background())
+	var consumerWg sync.WaitGroup
+	consumerWg.Add(1)
 	go func() {
-		service.ConsumeRabbitMQ(service.HandleArticleMessage)
+		defer consumerWg.Done()
+		// 取消context之前，会阻塞在内部for循环的select语句中，直到收到取消信号
+		service.ConsumeRabbitMQ(consumerCtx, service.HandleArticleMessage)
 	}()
 
 	// 初始化路由服务
@@ -93,12 +98,42 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	// 阻塞等待信号
 	<-quit
-	common.Log.Info("关闭服务中...")
-	// 优雅关闭HTTP Server（给正在处理的请求最多5秒完成）
+	// 已接收到信号，停止监听quit
+	signal.Stop(quit)
+	common.Log.Info("开始关闭服务...")
+	// 优雅关闭进程（给正在处理的请求最多5秒完成）
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	// 先关流量 -> 再关中间件 -> 再释放资源
+	// 1. 停止接受新的 HTTP 请求，等待已有请求结束或超时
 	if err := server.Shutdown(ctx); err != nil {
-		common.Log.Errorf("服务关闭出错: %v", err)
+		common.Log.Errorf("HTTP 服务关闭出错: %v", err)
 	}
+
+	// 2. 先停止消费循环，再断 RabbitMQ
+	// 使用waitGroup等待消费协程完成，避免消费协程仍对已关闭 channel 进行 Ack/Nack
+	stopConsumer()
+	consumerWg.Wait()
+	rabbitmq.CloseRabbitMQ()
+	common.Log.Info("RabbitMQ 连接已关闭")
+
+	// 3. 关闭 MySQL
+	if sqlDB, err := common.DB.DB(); err == nil {
+		if err := sqlDB.Close(); err != nil {
+			common.Log.Errorf("MySQL 连接关闭出错: %v", err)
+		} else {
+			common.Log.Info("MySQL 连接已关闭")
+		}
+	}
+
+	// 4. 关闭 ClickHouse
+	clickhouse.CloseClickHouse()
+
+	// go-elasticsearch/v8 客户端基于 net/http，进程退出时会回收；无单独 Close API。
+
+	// 5. 刷盘日志（避免进程退出时丢失缓冲区）
+	_ = common.Log.Sync()
+	common.Log.Info("日志已刷盘")
+
 	common.Log.Info("服务已关闭")
 }
