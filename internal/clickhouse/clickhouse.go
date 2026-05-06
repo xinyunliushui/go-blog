@@ -40,7 +40,6 @@ func InitClickHouse() error {
 			common.Log.Errorf("自动迁移失败: %v", err)
 			return err
 		}
-		common.Log.Infof("自动迁移成功")
 	}
 	return nil
 }

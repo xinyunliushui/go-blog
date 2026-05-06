@@ -2,7 +2,7 @@
  * @Date: 2026-04-22 17:42:02
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-24 10:51:03
+ * @LastEditTime: 2026-05-06 11:05:34
  * @Description: 文章DTO
  */
 package dto
@@ -49,19 +49,26 @@ func ToBlogsDto(blogs []model.Blog) []BlogDto {
 	return blogDtos
 }
 
+/***
+ * @description: 文章源数据DTO 用户ES查询结果
+ * @return {BlogPostSource}
+ */
 type BlogPostSource struct {
 	ID          uint       `json:"id"`
 	Title       string     `json:"title"`
 	Content     string     `json:"content"`
 	Summary     string     `json:"summary"`
-	CoverImage  string     `json:"coverImage"`
+	CoverImage  string     `json:"cover_image"`
 	Category    *string    `json:"category"`
 	Tags        *string    `json:"tags"`
 	Status      uint       `json:"status"`
 	Author      string     `json:"author"`
-	PublishedAt *time.Time `json:"publishedAt"`
+	PublishedAt *time.Time `json:"published_at"`
+	CreatedAt   *time.Time `json:"created_at"`
+	UpdatedAt   *time.Time `json:"updated_at"`
 	Highlight   struct {
 		Title   []string `json:"title,omitempty"`
+		Summary []string `json:"summary,omitempty"`
 		Content []string `json:"content,omitempty"`
 	} `json:"highlight"`
 }
@@ -91,6 +98,10 @@ type SearchBlogDto struct {
 	} `json:"suggest"`
 }
 
+/***
+ * @description: 搜索结果DTO
+ * @return {SearchResultDTO}
+ */
 type SearchResultDTO struct {
 	Hits       []BlogPostSource `json:"hits"`
 	Total      int              `json:"total"`

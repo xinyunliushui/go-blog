@@ -2,7 +2,7 @@
  * @Date: 2026-05-04 16:35:28
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-05 22:18:17
+ * @LastEditTime: 2026-05-06 10:28:26
  * @Description: 将博客索引到Elasticsearch
  */
 package repository
@@ -72,6 +72,11 @@ func IndexBlogToES(blog *model.Blog) error {
 	return nil
 }
 
+/***
+ * @description: 构建博客搜索查询DSL
+ * @param {vo.SearchBlogRequest} req
+ * @return {string, error}
+ */
 func BuildBlogSearchQueryDSL(req vo.SearchBlogRequest) (string, error) {
 	// 1. 多字段加权搜索
 	multiMatch := map[string]interface{}{
@@ -118,16 +123,24 @@ func BuildBlogSearchQueryDSL(req vo.SearchBlogRequest) (string, error) {
 				"boost_mode": "multiply",
 			},
 		},
-		// 高亮配置
+		// 高亮配置（title/summary 与 content 均使用 <mark>，与前端 .hitHtml 一致）
 		"highlight": map[string]interface{}{
 			"fields": map[string]interface{}{
-				// "title": map[string]interface{}{
-				// 	"type":          "fvh", // Fast Vector Highlighter
-				// 	"fragment_size": 0,     // 标题不需要分段
-				// },
+				"title": map[string]interface{}{
+					"type":          "fvh",
+					"fragment_size": 120,
+					"pre_tags":      []string{"<mark class='hl'>"},
+					"post_tags":     []string{"</mark>"},
+				},
+				"summary": map[string]interface{}{
+					"type":          "fvh",
+					"fragment_size": 280,
+					"pre_tags":      []string{"<mark class='hl'>"},
+					"post_tags":     []string{"</mark>"},
+				},
 				"content": map[string]interface{}{
 					"type":                "fvh",
-					"number_of_fragments": 2,
+					"number_of_fragments": 2,   // 内容分段数
 					"fragment_size":       150, // 适合代码片段的长度
 					"pre_tags":            []string{"<mark class='hl'>"},
 					"post_tags":           []string{"</mark>"},

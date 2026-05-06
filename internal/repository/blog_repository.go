@@ -2,7 +2,7 @@
  * @Date: 2026-04-22 16:03:57
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-05 20:46:39
+ * @LastEditTime: 2026-05-06 11:06:05
  * @Description: 文章接口实现
  */
 package repository
@@ -158,6 +158,13 @@ func (br BlogRepository) SearchBlogs(req *vo.SearchBlogRequest, ctx *gin.Context
 			ID:          hit.Source.ID,
 			Title:       utils.HighlightOrFallback(hit.Highlight["title"], hit.Source.Title),
 			Summary:     utils.HighlightOrFallback(hit.Highlight["summary"], hit.Source.Summary),
+			CoverImage:  hit.Source.CoverImage,
+			Category:    hit.Source.Category,
+			Tags:        hit.Source.Tags,
+			Status:      hit.Source.Status,
+			Author:      hit.Source.Author,
+			CreatedAt:   hit.Source.CreatedAt,
+			UpdatedAt:   hit.Source.UpdatedAt,
 			Content:     utils.HighlightOrFallback(hit.Highlight["content"], hit.Source.Content),
 			PublishedAt: hit.Source.PublishedAt,
 		}
@@ -165,6 +172,9 @@ func (br BlogRepository) SearchBlogs(req *vo.SearchBlogRequest, ctx *gin.Context
 		// 保留高亮信息
 		if hl, ok := hit.Highlight["title"]; ok {
 			post.Highlight.Title = hl
+		}
+		if hl, ok := hit.Highlight["summary"]; ok {
+			post.Highlight.Summary = hl
 		}
 		if hl, ok := hit.Highlight["content"]; ok {
 			post.Highlight.Content = hl
