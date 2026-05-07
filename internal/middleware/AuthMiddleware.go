@@ -2,13 +2,15 @@
  * @Date: 2026-03-31 17:07:35
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-24 11:04:04
+ * @LastEditTime: 2026-05-07 21:37:25
  * @Description: gin-jwt认证中间件
  */
 package middleware
 
 import (
+	"encoding/json"
 	"errors"
+	"go-blog/internal/common"
 	"go-blog/internal/config"
 	"go-blog/internal/model"
 	"go-blog/internal/repository"
@@ -32,16 +34,16 @@ func InitAuth() (*jwt.GinJWTMiddleware, error) {
 		Key:             []byte(config.Conf.Jwt.Key),                           // 服务端密钥
 		Timeout:         time.Hour * time.Duration(config.Conf.Jwt.Timeout),    // token过期时间
 		MaxRefresh:      time.Hour * time.Duration(config.Conf.Jwt.MaxRefresh), // token最大刷新时间(RefreshToken过期时间=Timeout+MaxRefresh)
-		PayloadFunc:     payloadFunc,                                             // 有效载荷处理
-		IdentityHandler: identityHandler,                                         // 解析Claims
-		Authenticator:   login,                                                   // 校验token的正确性, 处理登录逻辑
-		Authorizator:    authorizator,                                            // 用户登录校验成功处理
-		Unauthorized:    unauthorized,                                            // 用户登录校验失败处理
-		LoginResponse:   loginResponse,                                           // 登录成功后的响应
-		LogoutResponse:  logoutResponse,                                          // 登出后的响应
-		RefreshResponse: refreshResponse,                                         // 刷新token后的响应
-		TokenLookup:     "header: Authorization, query: jwt, cookie: jwt",        // 自动在这几个地方寻找请求中的token
-		TokenHeadName:   "Bearer",                                                // header名称
+		PayloadFunc:     payloadFunc,                                           // 有效载荷处理
+		IdentityHandler: identityHandler,                                       // 解析Claims
+		Authenticator:   login,                                                 // 校验token的正确性, 处理登录逻辑
+		Authorizator:    authorizator,                                          // 用户登录校验成功处理
+		Unauthorized:    unauthorized,                                          // 用户登录校验失败处理
+		LoginResponse:   loginResponse,                                         // 登录成功后的响应
+		LogoutResponse:  logoutResponse,                                        // 登出后的响应
+		RefreshResponse: refreshResponse,                                       // 刷新token后的响应
+		TokenLookup:     "header: Authorization, cookie: jwt",                  // 自动在这几个地方寻找请求中的token
+		TokenHeadName:   "Bearer",                                              // header名称
 		TimeFunc:        time.Now,
 	})
 	return authMiddleware, err
@@ -98,11 +100,15 @@ func login(c *gin.Context) (interface{}, error) {
 		Password: string(decodeData),
 	}
 
-	// 密码校验
+	// 密码校验（仓储层已统一 ErrInvalidCredentials；其它错误记日志后仍返回统一文案）
 	userRepository := repository.NewUserRepository()
 	user, err := userRepository.Login(u)
 	if err != nil {
-		return nil, errors.New("用户名或密码不正确")
+		if errors.Is(err, repository.ErrInvalidCredentials) {
+			return nil, err
+		}
+		common.Log.Errorf("登录异常: %v", err)
+		return nil, repository.ErrInvalidCredentials
 	}
 	// 重要 将用户以json格式写入, payloadFunc/authorizator会使用到
 	return map[string]interface{}{
@@ -116,16 +122,34 @@ func login(c *gin.Context) (interface{}, error) {
  * @return bool 是否成功
  */
 func authorizator(data interface{}, c *gin.Context) bool {
-	if v, ok := data.(map[string]interface{}); ok {
-		userStr := v["user"].(string)
-		var user model.User
-		// 将用户json转为结构体
-		utils.Json2Struct(userStr, &user)
-		// 将用户保存到context, api调用时取数据方便
-		c.Set("user", user)
-		return true
+	// 判断data是否为map[string]interface{}类型
+	v, ok := data.(map[string]interface{})
+	if !ok {
+		return false
 	}
-	return false
+	// 判断键是否存在且非 nil
+	raw, ok := v["user"]
+	if !ok || raw == nil {
+		return false
+	}
+	// 判断userStr是否为string类型
+	userStr, ok := raw.(string)
+	if !ok || userStr == "" {
+		return false
+	}
+	// 将userStr转换为model.User类型
+	var user model.User
+	if err := json.Unmarshal([]byte(userStr), &user); err != nil {
+		return false
+	}
+	// 判断user.ID是否为0
+	if user.ID == 0 {
+		return false
+	}
+	// 将user保存到context, api调用时取数据方便
+	c.Set("user", user)
+	// 返回true
+	return true
 }
 
 /** 用户登录校验失败处理

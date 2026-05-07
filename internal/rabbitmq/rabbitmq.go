@@ -49,14 +49,14 @@ func InitRabbitMQ() error {
 			return
 		}
 
-		// 声明队列（确保队列存在）
+		// 声明队列（确保队列存在；参数与 config 中 rabbitmq 段一致）
 		_, err = channel.QueueDeclare(
-			config.Conf.Rabbitmq.QueueName, // 队列名称
-			true,                           // 是否持久化
-			false,                          // 不使用时是否自动删除
-			false,                          // 是否具有排他性
-			false,                          // 是否阻塞等待服务器处理
-			nil,                            // 额外属性
+			config.Conf.Rabbitmq.QueueName,  // 队列名称
+			config.Conf.Rabbitmq.Durable,    // 队列是否持久化
+			config.Conf.Rabbitmq.AutoDelete, // 队列是否自动删除
+			config.Conf.Rabbitmq.Exclusive,  // 队列是否独占
+			false,                           // noWait：false 表示等待 Broker 确认声明成功
+			nil,
 		)
 		if err != nil {
 			common.Log.Errorf("声明队列失败: %s", err)
@@ -87,6 +87,10 @@ func PublishMessage(queueName string, message interface{}) error {
 		common.Log.Errorf("序列化消息失败: %s", err)
 		return err
 	}
+	deliveryMode := amqp.Transient
+	if config.Conf.Rabbitmq.Durable {
+		deliveryMode = amqp.Persistent
+	}
 	// 发布消息
 	err = channel.Publish(
 		"",        // 交换机名称（空字符串表示使用默认交换机）
@@ -96,7 +100,7 @@ func PublishMessage(queueName string, message interface{}) error {
 		amqp.Publishing{
 			ContentType:  "application/json",
 			Body:         body,
-			DeliveryMode: amqp.Persistent, // 消息持久化
+			DeliveryMode: deliveryMode, // 与队列 durable 策略一致
 		},
 	)
 	return err
@@ -116,15 +120,23 @@ func ConsumeMessage(queueName string, consumerName string) (<-chan amqp.Delivery
 			return nil, err
 		}
 	}
+	// 设置QoS（质量保证服务），确保每个消费者只接收指定数量的消息
+	if err := channel.Qos(
+		config.Conf.Rabbitmq.PrefetchCount,
+		0,     // prefetch size：未使用
+		false, // global：仅针对本 channel
+	); err != nil {
+		return nil, err
+	}
 	// 消费消息
 	msgs, err := channel.Consume(
-		queueName,    // 队列名称
-		consumerName, // 消费者标签
-		false,        // 是否自动确认（ACK）
-		false,        // 是否排他
-		false,        // 是否本地
-		false,        // 是否阻塞等待
-		nil,          // 额外参数
+		queueName,                    // 队列名称
+		consumerName,                 // 消费者名称
+		config.Conf.Rabbitmq.AutoAck, // 是否自动确认（ACK）
+		false,                        // exclusive
+		false,                        // noLocal（RabbitMQ 未实现，保持 false）
+		false,                        // noWait
+		nil,
 	)
 	return msgs, err
 }

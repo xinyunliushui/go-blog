@@ -23,8 +23,8 @@ func InitBlogRoutes(apiGroup *gin.RouterGroup, authMiddleware *jwt.GinJWTMiddlew
 	// 公开路由：不需要登录录认证
 	blogPublicRouter := apiGroup.Group("/blog")
 	// 启用限流中间
-	// 默认每50毫秒填充一个令牌，最多填充200个
-	fillInterval := time.Duration(config.Conf.RateLimit.FillInterval)
+	// fill-interval 在 config 中为毫秒；time.Duration(50) 为纳秒，须乘 time.Millisecond
+	fillInterval := time.Duration(config.Conf.RateLimit.FillInterval) * time.Millisecond
 	capacity := config.Conf.RateLimit.Capacity
 	blogPublicRouter.Use(middleware.RateLimitMiddleware(fillInterval, capacity))
 	{

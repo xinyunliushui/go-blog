@@ -2,22 +2,26 @@
  * @Date: 2026-03-25 22:44:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-24 10:55:52
+ * @LastEditTime: 2026-05-07 14:30:11
  * @Description: repository layer for user
  */
 package repository
 
 import (
 	"errors"
+	"fmt"
 	"go-blog/internal/common"
 	"go-blog/internal/model"
 	"go-blog/internal/utils"
 	"go-blog/internal/vo"
 
 	"github.com/gin-gonic/gin"
-	"github.com/thoas/go-funk"
 	"gorm.io/gorm"
 )
+
+// ErrInvalidCredentials 表示登录凭证无效（用户不存在、密码错误、账号非可用状态等），
+// 对外统一使用该错误，避免区分失败原因造成用户名枚举。
+var ErrInvalidCredentials = errors.New("用户名或密码不正确")
 
 // 数据层方法接口
 type IUserRepository interface {
@@ -74,25 +78,22 @@ func (ur UserRepository) GetUsers(req *vo.UserListRequest) ([]model.User, int64,
  * @return *model.User, error
  */
 func (ur UserRepository) Login(user *model.User) (*model.User, error) {
-	// 根据用户名获取用户(正常状态:用户状态正常)
 	var firstUser model.User
 	err := common.DB.
 		Where("username = ?", user.Username).
 		Preload("Roles").
 		First(&firstUser).Error
 	if err != nil {
-		return nil, errors.New("用户不存在")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrInvalidCredentials
+		}
+		return nil, fmt.Errorf("查询用户失败: %w", err)
 	}
-	// 校验密码
-	err = utils.ComparePasswd(firstUser.Password, user.Password)
-	if err != nil {
-		return &firstUser, errors.New("密码错误")
+	if err := utils.ComparePasswd(firstUser.Password, user.Password); err != nil {
+		return nil, ErrInvalidCredentials
 	}
-
-	// 判断用户的状态
-	userStatus := firstUser.Status
-	if userStatus != 1 {
-		return nil, errors.New("用户被禁用")
+	if firstUser.Status != 1 {
+		return nil, ErrInvalidCredentials
 	}
 	return &firstUser, nil
 }
@@ -141,13 +142,13 @@ func (ur UserRepository) CreateUser(user *model.User) error {
  * @return error
  */
 func (ur UserRepository) UpdateUserById(id uint, user *model.User) error {
-	err := common.Transaction(func(tx *gorm.DB) error {
-		// 1. 更新 users 表
-		if err := tx.Model(user).Updates(user).Error; err != nil {
+	err := common.Transaction(func(gdb *gorm.DB) error {
+		// 显式 Where id，不依赖传入 user 的主键；Omit Roles 避免 Updates 误写多对多
+		if err := gdb.Model(&model.User{}).Where("id = ?", id).Omit("Roles").Updates(user).Error; err != nil {
 			return err
 		}
-		// 2. 更新 user_role 关联表（Replace 会先删旧关联再建新关联）
-		if err := tx.Model(user).Association("Roles").Replace(user.Roles); err != nil {
+		// 更新 user_role 关联表（Replace 会先删旧关联再建新关联）
+		if err := gdb.Model(&model.User{}).Where("id = ?", id).Association("Roles").Replace(user.Roles); err != nil {
 			return err
 		}
 		return nil
@@ -171,13 +172,14 @@ func (ur UserRepository) GetUserMinRoleSortsByIds(ids []uint) ([]int, error) {
 	}
 	var roleMinSortList []int
 	for _, user := range userList {
-		roles := user.Roles
-		var roleSortList []int
-		for _, role := range roles {
+		if len(user.Roles) == 0 {
+			return nil, errors.New("用户未分配角色")
+		}
+		roleSortList := make([]int, 0, len(user.Roles))
+		for _, role := range user.Roles {
 			roleSortList = append(roleSortList, int(role.Sort))
 		}
-		roleMinSort := funk.MinInt(roleSortList)
-		roleMinSortList = append(roleMinSortList, roleMinSort)
+		roleMinSortList = append(roleMinSortList, minRoleSort(roleSortList))
 	}
 	return roleMinSortList, nil
 }
@@ -192,17 +194,28 @@ func (ur UserRepository) GetCurrentUserMinRoleSort(c *gin.Context) (uint, model.
 	if err != nil {
 		return 999, ctxUser, err
 	}
-	// 获取当前用户的所有角色
 	currentRoles := ctxUser.Roles
-	// 获取当前用户角色的排序，和前端传来的角色排序做比较
-	var currentRoleSorts []int
+	if len(currentRoles) == 0 {
+		return 0, ctxUser, errors.New("当前用户未分配角色")
+	}
+	currentRoleSorts := make([]int, 0, len(currentRoles))
 	for _, role := range currentRoles {
 		currentRoleSorts = append(currentRoleSorts, int(role.Sort))
 	}
-	// 当前用户角色排序最小值（最高等级角色）
-	currentRoleSortMin := uint(funk.MinInt(currentRoleSorts))
+	currentRoleSortMin := uint(minRoleSort(currentRoleSorts))
 
 	return currentRoleSortMin, ctxUser, nil
+}
+
+// minRoleSort 返回角色 Sort 的最小值（数值越小权限越高）。vals 必须非空。
+func minRoleSort(vals []int) int {
+	m := vals[0]
+	for i := 1; i < len(vals); i++ {
+		if vals[i] < m {
+			m = vals[i]
+		}
+	}
+	return m
 }
 
 /** 更新密码

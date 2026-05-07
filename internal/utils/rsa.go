@@ -106,6 +106,9 @@ func EncodeStr2Base64(str string) string {
  * @return string 解密后的字符串
  */
 func DecodeStrFromBase64(str string) string {
-	decodeBytes, _ := base64.StdEncoding.DecodeString(str)
+	decodeBytes, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return ""
+	}
 	return string(decodeBytes)
 }

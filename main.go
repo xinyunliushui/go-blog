@@ -2,7 +2,7 @@
  * @Date: 2026-03-18 21:50:24
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-06 21:44:16
+ * @LastEditTime: 2026-05-07 15:16:19
  * @Description: main
  */
 package main
@@ -30,7 +30,6 @@ func main() {
 	// 初始化配置
 	if err := config.InitConfig(); err != nil {
 		log.Fatalf("初始化配置失败: %v", err)
-		return
 	}
 
 	// 初始化日志
@@ -68,6 +67,16 @@ func main() {
 		defer consumerWg.Done()
 		// 取消context之前，会阻塞在内部for循环的select语句中，直到收到取消信号
 		service.ConsumeRabbitMQ(consumerCtx, service.HandleArticleMessage)
+	}()
+
+	// Blog 创建后 MQ 投递失败的本地补偿重试（先于关闭 MQ 连接停止）
+	outboxCtx, stopOutbox := context.WithCancel(context.Background())
+	var outboxWg sync.WaitGroup
+	outboxWg.Add(1)
+	go func() {
+		defer outboxWg.Done()
+		// 博客MQ投递失败时落库并定时重试
+		service.RunBlogMQOutboxRetry(outboxCtx)
 	}()
 
 	// 初始化路由服务
@@ -110,14 +119,18 @@ func main() {
 		common.Log.Errorf("HTTP 服务关闭出错: %v", err)
 	}
 
-	// 2. 先停止消费循环，再断 RabbitMQ
-	// 使用waitGroup等待消费协程完成，避免消费协程仍对已关闭 channel 进行 Ack/Nack
+	// 2. 停止 Outbox 重试（不再向 MQ Publish），再停消费者
+	stopOutbox()
+	outboxWg.Wait()
+
+	// 3. 停止 RabbitMQ 消费循环，再断连接
 	stopConsumer()
+	// 使用waitGroup等待消费协程完成，避免消费协程仍对已关闭 channel 进行 Ack/Nack
 	consumerWg.Wait()
 	rabbitmq.CloseRabbitMQ()
 	common.Log.Info("RabbitMQ 连接已关闭")
 
-	// 3. 关闭 MySQL
+	// 4. 关闭 MySQL
 	if sqlDB, err := common.DB.DB(); err == nil {
 		if err := sqlDB.Close(); err != nil {
 			common.Log.Errorf("MySQL 连接关闭出错: %v", err)
@@ -126,12 +139,12 @@ func main() {
 		}
 	}
 
-	// 4. 关闭 ClickHouse
+	// 5. 关闭 ClickHouse
 	clickhouse.CloseClickHouse()
 
 	// go-elasticsearch/v8 客户端基于 net/http，进程退出时会回收；无单独 Close API。
 
-	// 5. 刷盘日志（避免进程退出时丢失缓冲区）
+	// 6. 刷盘日志（避免进程退出时丢失缓冲区）
 	_ = common.Log.Sync()
 	common.Log.Info("日志已刷盘")
 

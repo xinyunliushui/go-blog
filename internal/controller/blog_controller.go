@@ -57,6 +57,7 @@ func (bc BlogController) GetBlogs(ctx *gin.Context) {
 	blogs, total, err := bc.BlogRepository.GetBlogs(&req)
 	if err != nil {
 		response.Fail(ctx, nil, "获取文章列表失败")
+		return
 	}
 	response.Success(ctx, gin.H{"content": dto.ToBlogsDto(blogs), "total": total, "page": req.Page, "pageSize": req.PageSize}, "获取文章列表成功")
 }
@@ -110,13 +111,18 @@ func (bc BlogController) CreateBlog(ctx *gin.Context) {
 		return
 	}
 
-	// 第二部分：发送消息到 RabbitMQ
-	if err := rabbitmq.PublishMessage(config.Conf.Rabbitmq.QueueName, blog); err != nil {
-		// 记录错误但不要影响主流程（可返回警告，或重试机制，此处简化）
-		response.Success(ctx, nil, "文章已保存到 MySQL，但异步写入 ES/CH 失败")
+	if err := rabbitmq.PublishMessage(config.Conf.Rabbitmq.QueueName, &blog); err != nil {
+		common.Log.Errorf("[MQ_OUTBOX_ALERT] blog_id=%d RabbitMQ 首次投递失败，写入本地补偿表: %v", blog.ID, err)
+		outboxRepo := repository.NewMQOutboxRepository()
+		if encErr := outboxRepo.EnqueueBlogPublish(&blog, err.Error()); encErr != nil {
+			common.Log.Errorf("[MQ_OUTBOX_ALERT] blog_id=%d 补偿表写入失败（需人工核对 MySQL 与 ES/CH）: %v", blog.ID, encErr)
+			response.Fail(ctx, gin.H{"blogId": blog.ID}, "文章已保存，但消息队列不可用且补偿记录失败，请联系管理员")
+			return
+		}
+		response.Success(ctx, gin.H{"blogId": blog.ID}, "文章已保存，同步至检索系统将自动重试")
 		return
 	}
-	response.Success(ctx, nil, "创建文章成功")
+	response.Success(ctx, gin.H{"blogId": blog.ID}, "创建文章成功")
 }
 
 // 更新文章状态

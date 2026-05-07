@@ -2,7 +2,7 @@
  * @Date: 2026-03-23 23:08:26
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-24 11:08:59
+ * @LastEditTime: 2026-05-07 15:15:50
  * @Description: database
  */
 package common
@@ -43,7 +43,7 @@ func InitMysql() {
 	})
 
 	if err != nil {
-		panic(fmt.Errorf("初始化mysql数据库异常: %v/n", err))
+		panic(fmt.Errorf("初始化mysql数据库异常: %v\n", err))
 	}
 
 	// 开启mysql日志
@@ -69,6 +69,7 @@ func dbAutoMigrate() {
 		&model.Role{},
 		&model.Menu{},
 		&model.Blog{},
+		&model.BlogMQOutbox{},
 	)
 }
 

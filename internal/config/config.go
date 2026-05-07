@@ -2,7 +2,7 @@
  * @Date: 2026-03-23 21:59:35
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-06 16:37:33
+ * @LastEditTime: 2026-05-07 14:09:53
  * @Description:
  */
 package config
@@ -10,6 +10,7 @@ package config
 import (
 	"fmt"
 	"go-blog/internal/utils"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -188,18 +189,7 @@ func InitConfig() error {
 		return fmt.Errorf("读取公共配置失败: %w", err)
 	}
 
-	// 读取环境配置文件
-	envConfigName := fmt.Sprintf("config.%s", env)
-	v.SetConfigName(envConfigName)
-	if err := v.MergeInConfig(); err != nil {
-		// 增量配置文件不是必需的，如果没有就继续
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return fmt.Errorf("合并环境配置失败 %s: %w", env, err)
-		}
-		return fmt.Errorf("环境配置文件不存在: %s", envConfigName)
-	}
-
-	// 4. 合并环境覆盖配置
+	// 4. 可选合并环境覆盖配置：存在 config.{env}.yaml 则合并，不存在则仅使用公共配置
 	if err := mergeEnvConfig(v, env); err != nil {
 		return fmt.Errorf("合并环境配置失败: %w", err)
 	}
@@ -224,10 +214,19 @@ func InitConfig() error {
 	return nil
 }
 
-// 合并环境配置文件
+// mergeEnvConfig 合并 internal/config/config.{env}.yaml；文件不存在时不报错，与「环境增量配置可选」一致。
 func mergeEnvConfig(v *viper.Viper, env string) error {
 	file := filepath.Join("internal", "config", fmt.Sprintf("config.%s.yaml", env))
-
+	st, err := os.Stat(file)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	if st.IsDir() {
+		return nil
+	}
 	v.SetConfigFile(file)
 	return v.MergeInConfig()
 }

@@ -2,7 +2,7 @@
  * @Date: 2026-05-04 16:35:28
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-06 10:28:26
+ * @LastEditTime: 2026-05-07 15:17:50
  * @Description: 将博客索引到Elasticsearch
  */
 package repository
@@ -158,6 +158,9 @@ func BuildBlogSearchQueryDSL(req vo.SearchBlogRequest) (string, error) {
 		},
 	}
 	// 转为JSON
-	body, _ := json.Marshal(dsl)
+	body, err := json.Marshal(dsl)
+	if err != nil {
+		return "", fmt.Errorf("构建博客搜索查询DSL失败: %w", err)
+	}
 	return string(body), nil
 }
