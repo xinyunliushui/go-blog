@@ -2,7 +2,7 @@
  * @Date: 2026-04-22 15:33:08
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-04 19:29:57
+ * @LastEditTime: 2026-05-08 16:59:08
  * @Description: 博客模型
  */
 package model
@@ -11,6 +11,12 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+)
+
+const (
+	BlogStatusDraft     = 1 // 草稿
+	BlogStatusPublished = 2 // 发布
+	BlogStatusPrivate   = 3 // 私密
 )
 
 // 博客模型结构体

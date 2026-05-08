@@ -2,7 +2,7 @@
  * @Date: 2026-03-23 21:59:35
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-07 14:09:53
+ * @LastEditTime: 2026-05-08 11:11:01
  * @Description:
  */
 package config
@@ -210,7 +210,6 @@ func InitConfig() error {
 		return fmt.Errorf("验证配置失败: %w", err)
 	}
 
-	fmt.Printf("初始化配置成功: %#v\n", Conf)
 	return nil
 }
 

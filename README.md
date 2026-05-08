@@ -2,7 +2,7 @@
 
 ## 简介
 - 博客以及管理后台，前后端分离，此项目为后端服务。
-- 后端Go包含了gin、gorm、jwt、MySQL、RabbitMQ、ElasticSearch和ClickHouse等的使用。
+- 后端Go包含了gin、gorm、jwt、MySQL、RabbitMQ、ElasticSearch和ClickHouse等的使用。其中MQ、ES、CH的使用仅为了学习。
 - 管理后台权限管理采用RBAC方案。
 - 对应的博客和管理平台[web-blog](https://github.com/xinyunliushui/web-blog)。
 
@@ -66,8 +66,8 @@ go-blog/
 - 日志管理使用Zap配合Lumberjack（由于zap不具备日志切割功能, 使用lumberjack配合）
 
 ## TODO
-- 博客在创建的时候就写入ES和CH，博客编辑后未更新ES和CH中的数据，导致搜索暴露草稿
-- MQ消费失败后降级处理，可持久化到日志
+- MQ消费失败后目前直接丢弃了，需要考虑补偿方案
+- ES和CH入库非原子操作，需要两边数据一致性问题
 - 项目的log数据可以尝试接入ES，实现项目的日志的分析
 - 博客的运营数据写入CH，让管理后台具有数据洞察能力
 

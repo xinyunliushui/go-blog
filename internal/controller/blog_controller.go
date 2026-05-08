@@ -2,7 +2,7 @@
  * @Date: 2026-04-22 16:01:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-05 21:16:48
+ * @LastEditTime: 2026-05-08 17:43:08
  * @Description: 文章控制器接口实现
  */
 package controller
@@ -150,6 +150,10 @@ func (bc BlogController) UpdateBlogPublishStatusById(ctx *gin.Context) {
 		publishedAt = &now
 	}
 	err := bc.BlogRepository.UpdateBlogPublishStatusById(uint(blogId), req.Status, publishedAt)
+	// 更新 ES 发布状态
+	if err := repository.UpdateBlogPublishStatusInES(uint(blogId), req.Status, publishedAt); err != nil {
+		common.Log.Errorf("blog_id=%d 更新 ES 发布状态失败: %v", blogId, err)
+	}
 	if err != nil {
 		response.Fail(ctx, nil, "更新文章状态失败")
 		return
@@ -189,6 +193,9 @@ func (bc BlogController) UpdateBlogById(ctx *gin.Context) {
 		response.Fail(ctx, nil, "更新文章失败")
 		return
 	}
+	if err := repository.UpdateBlogFieldsInESByBlog(uint(blogId), &blog); err != nil {
+		common.Log.Errorf("blog_id=%d 同步 ES 可检索字段失败: %v", blogId, err)
+	}
 	response.Success(ctx, nil, "更新文章成功")
 }
 
@@ -207,7 +214,7 @@ func (bc BlogController) SearchBlogs(ctx *gin.Context) {
 	}
 	searchBlogDto, err := bc.BlogRepository.SearchBlogs(&req, ctx)
 	if err != nil {
-		common.Log.Error("搜索文章失败: %v", err)
+		common.Log.Errorf("搜索文章失败: %v", err)
 		response.Fail(ctx, nil, "搜索文章失败")
 		return
 	}
