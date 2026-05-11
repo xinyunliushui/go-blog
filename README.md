@@ -4,7 +4,7 @@
 - 博客以及管理后台，前后端分离，此项目为后端服务。
 - 后端Go包含了gin、gorm、jwt、MySQL、RabbitMQ、ElasticSearch和ClickHouse等的使用。其中MQ、ES、CH的使用仅为了学习。
 - 管理后台权限管理采用RBAC方案。
-- 对应的博客和管理平台[web-blog](https://github.com/xinyunliushui/web-blog)。
+- 对应的博客和管理平台前端项目[web-blog](https://github.com/xinyunliushui/web-blog)。
 
 ## 项目结构
 项目目录结构参照[标准Go项目布局](https://github.com/golang-standards/project-layout/blob/master/README_zh.md)

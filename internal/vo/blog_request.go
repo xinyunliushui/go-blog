@@ -2,7 +2,7 @@
  * @Date: 2026-04-22 16:19:27
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-23 16:58:22
+ * @LastEditTime: 2026-05-09 15:38:12
  * @Description:
  */
 package vo
@@ -35,5 +35,3 @@ type SearchBlogRequest struct {
 	PaginationRequest
 	Keyword string `json:"keyword" form:"keyword"`
 }
-
-//
