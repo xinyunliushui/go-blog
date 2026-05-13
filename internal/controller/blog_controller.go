@@ -2,7 +2,7 @@
  * @Date: 2026-04-22 16:01:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-08 17:43:08
+ * @LastEditTime: 2026-05-13 14:44:27
  * @Description: 文章控制器接口实现
  */
 package controller
@@ -36,13 +36,13 @@ type BlogController struct {
 }
 
 func NewBlogController() IBlogController {
-	return BlogController{
+	return &BlogController{
 		BlogRepository: repository.NewBlogRepository(),
 	}
 }
 
 // 获取文章列表
-func (bc BlogController) GetBlogs(ctx *gin.Context) {
+func (bc *BlogController) GetBlogs(ctx *gin.Context) {
 	var req vo.GetBlogListRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
@@ -63,7 +63,7 @@ func (bc BlogController) GetBlogs(ctx *gin.Context) {
 }
 
 // 获取文章详情
-func (bc BlogController) GetBlogById(ctx *gin.Context) {
+func (bc *BlogController) GetBlogById(ctx *gin.Context) {
 	blogId, _ := strconv.Atoi(ctx.Param("blogId"))
 	if blogId <= 0 {
 		response.Fail(ctx, nil, "文章ID不正确")
@@ -77,7 +77,7 @@ func (bc BlogController) GetBlogById(ctx *gin.Context) {
 	response.Success(ctx, blog, "获取文章详情成功")
 }
 
-func (bc BlogController) CreateBlog(ctx *gin.Context) {
+func (bc *BlogController) CreateBlog(ctx *gin.Context) {
 	var req vo.CreateAndUpdateBlogRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
@@ -126,7 +126,7 @@ func (bc BlogController) CreateBlog(ctx *gin.Context) {
 }
 
 // 更新文章状态
-func (bc BlogController) UpdateBlogPublishStatusById(ctx *gin.Context) {
+func (bc *BlogController) UpdateBlogPublishStatusById(ctx *gin.Context) {
 	var req vo.UpdateBlogPublishStatusRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
@@ -162,7 +162,7 @@ func (bc BlogController) UpdateBlogPublishStatusById(ctx *gin.Context) {
 }
 
 // 更新文章
-func (bc BlogController) UpdateBlogById(ctx *gin.Context) {
+func (bc *BlogController) UpdateBlogById(ctx *gin.Context) {
 	var req vo.CreateAndUpdateBlogRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
@@ -200,7 +200,7 @@ func (bc BlogController) UpdateBlogById(ctx *gin.Context) {
 }
 
 // 搜索文章
-func (bc BlogController) SearchBlogs(ctx *gin.Context) {
+func (bc *BlogController) SearchBlogs(ctx *gin.Context) {
 	var req vo.SearchBlogRequest
 	// 参数绑定
 	if err := ctx.ShouldBindQuery(&req); err != nil {

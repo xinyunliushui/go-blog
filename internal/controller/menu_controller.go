@@ -2,7 +2,7 @@
  * @Date: 2026-04-08 21:27:02
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-24 10:48:29
+ * @LastEditTime: 2026-05-13 15:11:57
  * @Description: 菜单控制器接口实现
  */
 package controller
@@ -32,7 +32,7 @@ type MenuController struct {
 }
 
 func NewMenuController() IMenuController {
-	return MenuController{
+	return &MenuController{
 		MenuRepository: repository.NewMenuRepository(),
 	}
 }
@@ -41,7 +41,7 @@ func NewMenuController() IMenuController {
  * @param c *gin.Context 上下文
  * @return void
  */
-func (mc MenuController) GetUserMenuTreeByUserId(c *gin.Context) {
+func (mc *MenuController) GetUserMenuTreeByUserId(c *gin.Context) {
 	// 获取路径中的userId
 	userId, _ := strconv.Atoi(c.Param("userId"))
 	if userId <= 0 {
@@ -61,7 +61,7 @@ func (mc MenuController) GetUserMenuTreeByUserId(c *gin.Context) {
  * @param c *gin.Context 上下文
  * @return void
  */
-func (mc MenuController) GetMenus(c *gin.Context) {
+func (mc *MenuController) GetMenus(c *gin.Context) {
 	menus, err := mc.MenuRepository.GetMenus()
 	if err != nil {
 		response.Fail(c, nil, "获取菜单列表失败: "+err.Error())
@@ -74,7 +74,7 @@ func (mc MenuController) GetMenus(c *gin.Context) {
  * @param c *gin.Context 上下文
  * @return void
  */
-func (mc MenuController) CreateMenu(c *gin.Context) {
+func (mc *MenuController) CreateMenu(c *gin.Context) {
 	var req vo.CreateMenuRequest
 	// 参数绑定
 	if err := c.ShouldBind(&req); err != nil {
@@ -120,7 +120,7 @@ func (mc MenuController) CreateMenu(c *gin.Context) {
  * @param c *gin.Context 上下文
  * @return void
  */
-func (mc MenuController) GetMenuTree(c *gin.Context) {
+func (mc *MenuController) GetMenuTree(c *gin.Context) {
 	menuTree, err := mc.MenuRepository.GetMenuTree()
 	if err != nil {
 		response.Fail(c, nil, "获取菜单树失败: "+err.Error())
@@ -133,7 +133,7 @@ func (mc MenuController) GetMenuTree(c *gin.Context) {
  * @param c *gin.Context 上下文
  * @return void
  */
-func (mc MenuController) UpdateMenuById(c *gin.Context) {
+func (mc *MenuController) UpdateMenuById(c *gin.Context) {
 	// 获取路径中的menuId
 	menuId, _ := strconv.Atoi(c.Param("menuId"))
 	if menuId <= 0 {

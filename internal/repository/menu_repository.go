@@ -2,7 +2,7 @@
  * @Date: 2026-04-08 21:28:24
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-21 09:27:44
+ * @LastEditTime: 2026-05-13 15:21:46
  * @Description: 菜单仓库
  */
 package repository
@@ -28,14 +28,14 @@ type MenuRepository struct {
 }
 
 func NewMenuRepository() IMenuRepository {
-	return MenuRepository{}
+	return &MenuRepository{}
 }
 
 /** 根据用户ID获取用户的权限(可访问)菜单列表
  * @param userId uint 用户ID
  * @return []*model.Menu, error
  */
-func (m MenuRepository) GetUserMenusByUserId(userId uint) ([]*model.Menu, error) {
+func (mr *MenuRepository) GetUserMenusByUserId(userId uint) ([]*model.Menu, error) {
 	// 获取用户
 	var user model.User
 	err := common.DB.Where("id = ?", userId).Preload("Roles").First(&user).Error
@@ -88,8 +88,8 @@ func (m MenuRepository) GetUserMenusByUserId(userId uint) ([]*model.Menu, error)
  * @param userId uint 用户ID
  * @return []dto.MenuDto, error
  */
-func (m MenuRepository) GetUserMenuTreeByUserId(userId uint) ([]dto.MenuDto, error) {
-	menus, err := m.GetUserMenusByUserId(userId)
+func (mr *MenuRepository) GetUserMenuTreeByUserId(userId uint) ([]dto.MenuDto, error) {
+	menus, err := mr.GetUserMenusByUserId(userId)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func GenMenuTreeDto(parentId uint, menus []*model.Menu) []dto.MenuDto {
 /** 获取菜单列表
  * @return []*model.Menu, error
  */
-func (m MenuRepository) GetMenus() ([]*model.Menu, error) {
+func (mr *MenuRepository) GetMenus() ([]*model.Menu, error) {
 	var menus []*model.Menu
 	err := common.DB.Order("sort").Find(&menus).Error
 	return menus, err
@@ -127,8 +127,8 @@ func (m MenuRepository) GetMenus() ([]*model.Menu, error) {
 /** 获取菜单树
  * @return []dto.MenuDto, error
  */
-func (m MenuRepository) GetMenuTree() ([]dto.MenuDto, error) {
-	menus, err := m.GetMenus()
+func (mr *MenuRepository) GetMenuTree() ([]dto.MenuDto, error) {
+	menus, err := mr.GetMenus()
 	tree := GenMenuTreeDto(0, menus)
 	return tree, err
 }
@@ -137,7 +137,7 @@ func (m MenuRepository) GetMenuTree() ([]dto.MenuDto, error) {
  * @param menu *model.Menu 菜单
  * @return error
  */
-func (m MenuRepository) CreateMenu(menu *model.Menu) error {
+func (mr *MenuRepository) CreateMenu(menu *model.Menu) error {
 	err := common.DB.Create(menu).Error
 	return err
 }
@@ -147,7 +147,7 @@ func (m MenuRepository) CreateMenu(menu *model.Menu) error {
  * @param menu *model.Menu 菜单
  * @return error
  */
-func (m MenuRepository) UpdateMenuById(menuId uint, menu *model.Menu) error {
+func (mr *MenuRepository) UpdateMenuById(menuId uint, menu *model.Menu) error {
 	err := common.DB.Model(&model.Menu{}).Where("id = ?", menuId).Updates(menu).Error
 	return err
 }

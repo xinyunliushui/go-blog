@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:08:27
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-21 17:27:21
+ * @LastEditTime: 2026-05-13 22:16:37
  * @Description: 用户控制器接口实现
  */
 package controller
@@ -23,11 +23,11 @@ import (
 )
 
 type IUserController interface {
-	GetUserInfo(ctx *gin.Context)
-	GetUsers(ctx *gin.Context)
-	CreateUser(ctx *gin.Context)
-	UpdateUserById(ctx *gin.Context)
-	ChangePwd(ctx *gin.Context)
+	GetUserInfo(ctx *gin.Context)    // 获取当前登录用户信息
+	GetUsers(ctx *gin.Context)       // 获取用户列表
+	CreateUser(ctx *gin.Context)     // 创建用户
+	UpdateUserById(ctx *gin.Context) // 更新用户
+	ChangePwd(ctx *gin.Context)      // 更新用户登录密码
 }
 
 type UserController struct {
@@ -35,7 +35,7 @@ type UserController struct {
 }
 
 func NewUserController() IUserController {
-	return UserController{
+	return &UserController{
 		UserRepository: repository.NewUserRepository(),
 	}
 }
@@ -44,7 +44,7 @@ func NewUserController() IUserController {
  * @param ctx *gin.Context 上下文
  * @return void
  */
-func (uc UserController) GetUserInfo(ctx *gin.Context) {
+func (uc *UserController) GetUserInfo(ctx *gin.Context) {
 	user, err := uc.UserRepository.GetCurrentUser(ctx)
 	if err != nil {
 		response.Fail(ctx, nil, "获取用户信息失败")
@@ -58,7 +58,7 @@ func (uc UserController) GetUserInfo(ctx *gin.Context) {
  * @param ctx *gin.Context 上下文
  * @return void
  */
-func (uc UserController) GetUsers(ctx *gin.Context) {
+func (uc *UserController) GetUsers(ctx *gin.Context) {
 	var req vo.UserListRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
@@ -82,7 +82,7 @@ func (uc UserController) GetUsers(ctx *gin.Context) {
  * @param ctx *gin.Context 上下文
  * @return void
  */
-func (uc UserController) CreateUser(ctx *gin.Context) {
+func (uc *UserController) CreateUser(ctx *gin.Context) {
 	var req vo.CreateOrUpdateUserRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
@@ -141,7 +141,7 @@ func (uc UserController) CreateUser(ctx *gin.Context) {
  * @param ctx *gin.Context 上下文
  * @return void
  */
-func (uc UserController) UpdateUserById(ctx *gin.Context) {
+func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 	userId, _ := strconv.Atoi(ctx.Param("userId"))
 	if userId <= 0 {
 		response.Fail(ctx, nil, "用户ID不正确")
@@ -278,7 +278,7 @@ func (uc UserController) UpdateUserById(ctx *gin.Context) {
 		}
 	}
 
-	err = uc.UserRepository.UpdateUserById(uint(userId), &user)
+	err = uc.UserRepository.UpdateUserById(&user)
 	if err != nil {
 		response.Fail(ctx, nil, "更新用户失败: "+err.Error())
 		return
@@ -291,7 +291,7 @@ func (uc UserController) UpdateUserById(ctx *gin.Context) {
  * @param ctx *gin.Context 上下文
  * @return void
  */
-func (uc UserController) ChangePwd(ctx *gin.Context) {
+func (uc *UserController) ChangePwd(ctx *gin.Context) {
 	var req vo.ChangePwdRequest
 
 	// 参数绑定

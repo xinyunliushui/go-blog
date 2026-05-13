@@ -2,7 +2,7 @@
  * @Date: 2026-04-02 22:10:45
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-24 10:55:36
+ * @LastEditTime: 2026-05-13 15:29:13
  * @Description: 角色仓库
  */
 package repository
@@ -25,14 +25,14 @@ type IRoleRepository interface {
 type RoleRepository struct{}
 
 func NewRoleRepository() IRoleRepository {
-	return RoleRepository{}
+	return &RoleRepository{}
 }
 
 /** 获取角色列表
  * @param req *vo.RoleListRequest 角色列表请求
  * @return []*model.Role, int64, error
  */
-func (r RoleRepository) GetRoles(req *vo.RoleListRequest) ([]*model.Role, int64, error) {
+func (*RoleRepository) GetRoles(req *vo.RoleListRequest) ([]*model.Role, int64, error) {
 	var list []*model.Role
 	db := common.DB.Model(&model.Role{}).Order("sort ASC")
 
@@ -56,7 +56,7 @@ func (r RoleRepository) GetRoles(req *vo.RoleListRequest) ([]*model.Role, int64,
  * @param roleIds []uint 角色ID列表
  * @return []*model.Role, error
  */
-func (r RoleRepository) GetRolesByIds(roleIds []uint) ([]*model.Role, error) {
+func (*RoleRepository) GetRolesByIds(roleIds []uint) ([]*model.Role, error) {
 	var list []*model.Role
 	err := common.DB.Where("id IN (?)", roleIds).Find(&list).Error
 	return list, err
@@ -66,7 +66,7 @@ func (r RoleRepository) GetRolesByIds(roleIds []uint) ([]*model.Role, error) {
  * @param roleId uint 角色ID
  * @return []*model.Menu, error
  */
-func (r RoleRepository) GetRoleMenusById(roleId uint) ([]*model.Menu, error) {
+func (*RoleRepository) GetRoleMenusById(roleId uint) ([]*model.Menu, error) {
 	var role model.Role
 	err := common.DB.Where("id = ?", roleId).Preload("Menus").First(&role).Error
 	return role.Menus, err
@@ -76,7 +76,7 @@ func (r RoleRepository) GetRoleMenusById(roleId uint) ([]*model.Menu, error) {
  * @param role *model.Role 角色
  * @return error
  */
-func (r RoleRepository) CreateRole(role *model.Role) error {
+func (*RoleRepository) CreateRole(role *model.Role) error {
 	err := common.DB.Create(role).Error
 	return err
 }
@@ -86,7 +86,7 @@ func (r RoleRepository) CreateRole(role *model.Role) error {
  * @param role *model.Role 角色
  * @return error
  */
-func (r RoleRepository) UpdateRoleById(roleId uint, role *model.Role) error {
+func (*RoleRepository) UpdateRoleById(roleId uint, role *model.Role) error {
 	err := common.DB.Model(&model.Role{}).Where("id = ?", roleId).Updates(role).Error
 	return err
 }
@@ -95,7 +95,7 @@ func (r RoleRepository) UpdateRoleById(roleId uint, role *model.Role) error {
  * @param role *model.Role 角色
  * @return error
  */
-func (r RoleRepository) UpdateRoleMenus(role *model.Role) error {
+func (*RoleRepository) UpdateRoleMenus(role *model.Role) error {
 	err := common.DB.Model(role).Association("Menus").Replace(role.Menus)
 	return err
 }

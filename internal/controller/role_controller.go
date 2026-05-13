@@ -2,7 +2,7 @@
  * @Date: 2026-04-02 22:09:11
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-24 10:48:42
+ * @LastEditTime: 2026-05-13 15:12:41
  * @Description: 角色控制器接口实现
  */
 package controller
@@ -34,7 +34,7 @@ type RoleController struct {
 }
 
 func NewRoleController() IRoleController {
-	return RoleController{
+	return &RoleController{
 		RoleRepository: repository.NewRoleRepository(),
 	}
 }
@@ -43,7 +43,7 @@ func NewRoleController() IRoleController {
  * @param ctx *gin.Context 上下文
  * @return void
  */
-func (rc RoleController) GetRoles(ctx *gin.Context) {
+func (rc *RoleController) GetRoles(ctx *gin.Context) {
 	var req vo.RoleListRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
@@ -69,7 +69,7 @@ func (rc RoleController) GetRoles(ctx *gin.Context) {
  * @param ctx *gin.Context 上下文
  * @return void
  */
-func (rc RoleController) CreateRole(ctx *gin.Context) {
+func (rc *RoleController) CreateRole(ctx *gin.Context) {
 	var req vo.CreateRoleRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
@@ -119,7 +119,7 @@ func (rc RoleController) CreateRole(ctx *gin.Context) {
  * @param ctx *gin.Context 上下文
  * @return void
  */
-func (rc RoleController) UpdateRoleById(ctx *gin.Context) {
+func (rc *RoleController) UpdateRoleById(ctx *gin.Context) {
 	var req vo.CreateRoleRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
@@ -191,7 +191,7 @@ func (rc RoleController) UpdateRoleById(ctx *gin.Context) {
  * @param ctx *gin.Context 上下文
  * @return void
  */
-func (rc RoleController) GetRoleMenusById(ctx *gin.Context) {
+func (rc *RoleController) GetRoleMenusById(ctx *gin.Context) {
 	roleId, _ := strconv.Atoi(ctx.Param("roleId"))
 	if roleId <= 0 {
 		response.Fail(ctx, nil, "角色ID不正确")
@@ -209,7 +209,7 @@ func (rc RoleController) GetRoleMenusById(ctx *gin.Context) {
  * @param ctx *gin.Context 上下文
  * @return void
  */
-func (rc RoleController) UpdateRoleMenusById(ctx *gin.Context) {
+func (rc *RoleController) UpdateRoleMenusById(ctx *gin.Context) {
 	var req vo.UpdateRoleMenusRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {

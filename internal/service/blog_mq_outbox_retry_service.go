@@ -2,7 +2,7 @@
  * @Date: 2026-05-07 17:04:50
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-07 17:24:45
+ * @LastEditTime: 2026-05-13 15:47:57
  * @Description: 博客MQ投递失败时落库并定时重试
  */
 package service
@@ -37,9 +37,9 @@ func RunBlogMQOutboxRetry(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			common.Log.Info("Blog MQ Outbox 重试任务已退出")
+			common.Log.Info("[消息推送重试] Blog MQ Outbox 重试任务已退出")
 			return
-		case <-ticker.C:
+		case <-ticker.C: // ticker的channel会每隔30秒发送一次信号
 			processBlogOutboxBatch(repo)
 		}
 	}
@@ -53,7 +53,7 @@ func RunBlogMQOutboxRetry(ctx context.Context) {
 func processBlogOutboxBatch(repo repository.IMQOutboxRepository) {
 	rows, err := repo.ListPendingForRetry(blogOutboxBatchSize)
 	if err != nil {
-		common.Log.Errorf("[MQ_OUTBOX_ALERT] 查询待重试 Outbox 失败: %v", err)
+		common.Log.Errorf("[消息推送重试] 查询待重试 Outbox 失败: %v", err)
 		return
 	}
 	if len(rows) == 0 {
@@ -65,14 +65,14 @@ func processBlogOutboxBatch(repo repository.IMQOutboxRepository) {
 		// 反序列化 payload 为 blog
 		var blog model.Blog
 		if err := json.Unmarshal(row.Payload, &blog); err != nil {
-			common.Log.Errorf("[MQ_OUTBOX_ALERT] outbox_id=%d blog_id=%d payload 解析失败: %v", row.ID, row.BlogID, err)
+			common.Log.Errorf("[消息推送重试] outbox_id=%d blog_id=%d payload 解析失败: %v", row.ID, row.BlogID, err)
 			next := row.RetryCount + 1
 			dead := next >= blogOutboxMaxRetries
 			if err2 := repo.MarkRetry(row.ID, next, err.Error(), dead); err2 != nil {
-				common.Log.Errorf("[MQ_OUTBOX_ALERT] 更新 Outbox 失败 outbox_id=%d: %v", row.ID, err2)
+				common.Log.Errorf("[消息推送重试] 更新 Outbox 失败 outbox_id=%d: %v", row.ID, err2)
 			}
 			if dead {
-				common.Log.Errorf("[MQ_OUTBOX_DEAD_LETTER] outbox_id=%d blog_id=%d payload 损坏且已达最大重试", row.ID, row.BlogID)
+				common.Log.Errorf("[消息推送重试] 死信: outbox_id=%d blog_id=%d payload 损坏且已达最大重试", row.ID, row.BlogID)
 			}
 			continue
 		}
@@ -80,22 +80,22 @@ func processBlogOutboxBatch(repo repository.IMQOutboxRepository) {
 		if err := rabbitmq.PublishMessage(queue, &blog); err != nil {
 			next := row.RetryCount + 1
 			dead := next >= blogOutboxMaxRetries
-			common.Log.Errorf("[MQ_OUTBOX_ALERT] outbox_id=%d blog_id=%d 第%d次重试仍失败: %v dead=%v",
+			common.Log.Errorf("[消息推送重试] outbox_id=%d blog_id=%d 第%d次重试仍失败: %v dead=%v",
 				row.ID, row.BlogID, next, err, dead)
 			if err2 := repo.MarkRetry(row.ID, next, err.Error(), dead); err2 != nil {
-				common.Log.Errorf("[MQ_OUTBOX_ALERT] 更新 Outbox 失败 outbox_id=%d: %v", row.ID, err2)
+				common.Log.Errorf("[消息推送重试] 更新 Outbox 失败 outbox_id=%d: %v", row.ID, err2)
 				continue
 			}
 			if dead {
-				common.Log.Errorf("[MQ_OUTBOX_DEAD_LETTER] outbox_id=%d blog_id=%d 已达最大重试次数，请人工补投或修 MQ", row.ID, row.BlogID)
+				common.Log.Errorf("[消息推送重试] 死信: outbox_id=%d blog_id=%d 已达最大重试次数，请人工补投或修 MQ", row.ID, row.BlogID)
 			}
 			continue
 		}
 
 		if err := repo.MarkSent(row.ID); err != nil {
-			common.Log.Errorf("[MQ_OUTBOX_ALERT] 标记 Outbox 成功失败 outbox_id=%d blog_id=%d: %v", row.ID, row.BlogID, err)
+			common.Log.Errorf("[消息推送重试] 标记 Outbox 成功失败 outbox_id=%d blog_id=%d: %v", row.ID, row.BlogID, err)
 			continue
 		}
-		common.Log.Infof("Blog MQ Outbox 重试成功 outbox_id=%d blog_id=%d", row.ID, row.BlogID)
+		common.Log.Infof("[消息推送重试] 重试成功 Blog MQ Outbox outbox_id=%d blog_id=%d", row.ID, row.BlogID)
 	}
 }

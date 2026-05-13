@@ -2,7 +2,7 @@
  * @Date: 2026-04-22 16:03:57
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-06 11:06:05
+ * @LastEditTime: 2026-05-13 15:30:29
  * @Description: 文章接口实现
  */
 package repository
@@ -36,14 +36,14 @@ type BlogRepository struct {
 }
 
 func NewBlogRepository() IBlogRepository {
-	return BlogRepository{}
+	return &BlogRepository{}
 }
 
 /** 获取文章列表
  * @param req *vo.GetBlogListRequest 文章列表请求
  * @return []model.Blog, int64, error
  */
-func (br BlogRepository) GetBlogs(req *vo.GetBlogListRequest) ([]model.Blog, int64, error) {
+func (*BlogRepository) GetBlogs(req *vo.GetBlogListRequest) ([]model.Blog, int64, error) {
 	var blogList []model.Blog
 	db := common.DB.Model(&model.Blog{}).Order("created_at DESC")
 	status := req.Status
@@ -70,7 +70,7 @@ func (br BlogRepository) GetBlogs(req *vo.GetBlogListRequest) ([]model.Blog, int
  * @param blog 文章信息
  * @return error
  */
-func (br BlogRepository) CreateBlog(blog *model.Blog) error {
+func (*BlogRepository) CreateBlog(blog *model.Blog) error {
 	err := common.DB.Create(blog).Error
 	return err
 }
@@ -79,7 +79,7 @@ func (br BlogRepository) CreateBlog(blog *model.Blog) error {
  * @param blogId 文章ID
  * @return model.Blog, error
  */
-func (br BlogRepository) GetBlogById(blogId uint) (model.Blog, error) {
+func (*BlogRepository) GetBlogById(blogId uint) (model.Blog, error) {
 	var blog model.Blog
 	err := common.DB.Where("id = ?", blogId).First(&blog).Error
 	return blog, err
@@ -91,7 +91,7 @@ func (br BlogRepository) GetBlogById(blogId uint) (model.Blog, error) {
  * @param publishedAt 发布时间
  * @return error
  */
-func (br BlogRepository) UpdateBlogPublishStatusById(blogId uint, status uint, publishedAt *time.Time) error {
+func (*BlogRepository) UpdateBlogPublishStatusById(blogId uint, status uint, publishedAt *time.Time) error {
 	var publishedAtValue interface{}
 	if publishedAt == nil {
 		publishedAtValue = nil
@@ -108,7 +108,7 @@ func (br BlogRepository) UpdateBlogPublishStatusById(blogId uint, status uint, p
  * @param blog 文章信息
  * @return error
  */
-func (br BlogRepository) UpdateBlogById(blogId uint, blog *model.Blog) error {
+func (*BlogRepository) UpdateBlogById(blogId uint, blog *model.Blog) error {
 	err := common.DB.Model(&model.Blog{}).Where("id = ?", blogId).Updates(blog).Error
 	return err
 }
@@ -117,7 +117,7 @@ func (br BlogRepository) UpdateBlogById(blogId uint, blog *model.Blog) error {
  * @param req *vo.SearchBlogRequest 搜索文章请求
  * @return dto.SearchBlogDto, error
  */
-func (br BlogRepository) SearchBlogs(req *vo.SearchBlogRequest, ctx *gin.Context) (*dto.SearchResultDTO, error) {
+func (*BlogRepository) SearchBlogs(req *vo.SearchBlogRequest, ctx *gin.Context) (*dto.SearchResultDTO, error) {
 	queryDSL, err := BuildBlogSearchQueryDSL(*req)
 	if err != nil {
 		return nil, err
