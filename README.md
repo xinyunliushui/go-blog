@@ -46,14 +46,14 @@ go-blog/
 
 
 ## 技术栈
-- `Gin` 一个类似于martini但拥有更好性能的API框架, 由于使用了httprouter, 速度提高了近40倍
+- [`Gin`](https://github.com/gin-gonic/gin) 一个类似于martini但拥有更好性能的API框架, 由于使用了httprouter, 速度提高了近40倍
 - `MySQL` 采用的是MySql数据库
-- `Jwt` 使用JWT轻量级认证, 并提供活跃用户Token刷新功能
-- `Gorm` 采用Gorm 2.0版本开发, 包含一对多、多对多、事务等操作
-- `Validator` 使用validator v10做参数校验, 严密校验前端传入参数
-- `Lumberjack` 设置日志文件大小、保存数量、保存时间和压缩等
-- `Viper` Go应用程序的完整配置解决方案, 支持配置热更新
-- `GoFunk` 包含大量的Slice操作方法的工具包
+- [`gin-jwt`](https://github.com/appleboy/gin-jwt) 使用JWT轻量级认证, 并提供活跃用户Token刷新功能
+- [`Gorm`](https://github.com/go-gorm/gorm) 采用Gorm 2.0版本开发, 包含一对多、多对多、事务等操作
+- [`Validator`](https://github.com/go-playground/validator) 使用validator v10做参数校验, 严密校验前端传入参数
+- [`Lumberjack`](https://github.com/natefinch/lumberjack) 设置日志文件大小、保存数量、保存时间和压缩等
+- [`Viper`](https://github.com/spf13/viper) Go应用程序的完整配置解决方案, 支持配置热更新
+- [`GoFunk`](https://github.com/thoas/go-funk) 包含大量的Slice操作方法的工具包，[使用文档](https://pkg.go.dev/github.com/thoas/go-funk#pkg-index)
 
 ## gin中间件
 - `AuthMiddleware` 权限认证中间件 -- 处理登录、登出、无状态token校验
