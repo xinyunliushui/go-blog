@@ -2,12 +2,13 @@
  * @Date: 2026-03-25 22:08:27
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-13 22:16:37
+ * @LastEditTime: 2026-05-14 15:08:50
  * @Description: 用户控制器接口实现
  */
 package controller
 
 import (
+	"errors"
 	"go-blog/internal/common"
 	"go-blog/internal/config"
 	"go-blog/internal/dto"
@@ -251,19 +252,22 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 		// 用户不能更新比自己角色等级高的或者相同等级的用户
 		// 根据path中的userIdID获取用户角色排序最小值
 		minRoleSorts, err := uc.UserRepository.GetUserMinRoleSortsByIds([]uint{uint(userId)})
-		if err != nil || len(minRoleSorts) == 0 {
-			response.Fail(ctx, nil, "根据用户ID获取用户角色排序最小值失败")
-			return
-		}
-		if currentRoleSortMin >= minRoleSorts[0] {
-			response.Fail(ctx, nil, "用户不能更新比自己角色等级高的或者相同等级的用户")
-			return
-		}
+		// 如果获取用户角色排序最小值失败，并且错误不是用户未分配角色，则返回错误
+		if !errors.Is(err, repository.ErrUserNotAssignedRoles) {
+			if err != nil || len(minRoleSorts) == 0 {
+				response.Fail(ctx, nil, "根据用户ID获取用户角色排序最小值失败")
+				return
+			}
+			if currentRoleSortMin >= minRoleSorts[0] {
+				response.Fail(ctx, nil, "用户不能更新比自己角色等级高的或者相同等级的用户")
+				return
+			}
 
-		// 用户不能把别的用户角色等级更新得比自己高或相等
-		if currentRoleSortMin >= reqRoleSortMin {
-			response.Fail(ctx, nil, "用户不能把别的用户角色等级更新得比自己高或相等")
-			return
+			// 用户不能把别的用户角色等级更新得比自己高或相等
+			if currentRoleSortMin >= reqRoleSortMin {
+				response.Fail(ctx, nil, "用户不能把别的用户角色等级更新得比自己高或相等")
+				return
+			}
 		}
 
 		// 密码赋值

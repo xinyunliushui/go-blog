@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:44:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-13 22:14:24
+ * @LastEditTime: 2026-05-14 14:22:28
  * @Description: repository layer for user
  */
 package repository
@@ -22,6 +22,7 @@ import (
 // ErrInvalidCredentials 表示登录凭证无效（用户不存在、密码错误、账号非可用状态等），
 // 对外统一使用该错误，避免区分失败原因造成用户名枚举。
 var ErrInvalidCredentials = errors.New("用户名或密码不正确")
+var ErrUserNotAssignedRoles = errors.New("用户未分配角色")
 
 // 数据层方法接口
 type IUserRepository interface {
@@ -173,7 +174,7 @@ func (ur *UserRepository) GetUserMinRoleSortsByIds(ids []uint) ([]int, error) {
 	var roleMinSortList []int
 	for _, user := range userList {
 		if len(user.Roles) == 0 {
-			return nil, errors.New("用户未分配角色")
+			return nil, ErrUserNotAssignedRoles
 		}
 		roleSortList := make([]int, 0, len(user.Roles))
 		for _, role := range user.Roles {
