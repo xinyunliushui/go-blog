@@ -23,6 +23,8 @@ func InitRoutes() *gin.Engine {
 
 	// api分组
 	apiGroup := router.Group("/" + config.Conf.Application.UrlPathPrefix)
+	// V1版本
+	v1ApiGroup := apiGroup.Group("/v1")
 	// 初始化JWT认证中间件
 	authMiddleware, err := middleware.InitAuth()
 	if err != nil {
@@ -30,19 +32,19 @@ func InitRoutes() *gin.Engine {
 	}
 
 	// 注册认证路由
-	InitAuthRoutes(apiGroup, authMiddleware)
+	InitAuthRoutes(v1ApiGroup, authMiddleware)
 
 	// 注册用户路由
-	InitUserRoutes(apiGroup, authMiddleware)
+	InitUserRoutes(v1ApiGroup, authMiddleware)
 
 	// 注册角色路由
-	InitRoleRoutes(apiGroup, authMiddleware)
+	InitRoleRoutes(v1ApiGroup, authMiddleware)
 
 	// 注册菜单路由
-	InitMenuRoutes(apiGroup, authMiddleware)
+	InitMenuRoutes(v1ApiGroup, authMiddleware)
 
 	// 注册博客路由
-	InitBlogRoutes(apiGroup, authMiddleware)
+	InitBlogRoutes(v1ApiGroup, authMiddleware)
 
 	return router
 }
