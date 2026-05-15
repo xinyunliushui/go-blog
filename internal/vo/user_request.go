@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 21:57:13
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-15 14:07:13
+ * @LastEditTime: 2026-05-15 22:32:11
  * @Description: value object for user request
  */
 package vo
@@ -28,7 +28,7 @@ type CreateOrUpdateUserRequest struct {
 	Nickname     string   `form:"nickname" json:"nickname" validate:"min=0,max=20"`
 	Introduction string   `form:"introduction" json:"introduction" validate:"min=0,max=255"`
 	Status       uint     `form:"status" json:"status" validate:"oneof=1 2"`
-	RoleIds      []string `form:"roleIds" json:"roleIds"`
+	RoleIds      []string `form:"roleIds" json:"roleIds" validate:"required"`
 }
 
 // 更新密码结构体

@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:44:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-15
+ * @LastEditTime: 2026-05-15 22:37:51
  * @Description: repository layer for user
  */
 package repository
@@ -29,13 +29,13 @@ type IUserRepository interface {
 	Login(user *model.User) (*model.User, error) // 登录
 	// GetUsers 分页查询；status 为 nil 时不按状态筛选
 	GetUsers(req *vo.UserListRequest) ([]model.User, int64, error)
-	GetCurrentUser(c *gin.Context) (model.User, error)                     // 获取当前登录用户信息
-	GetUserById(id string) (model.User, error)                             // 获取单个用户信息
-	CreateUser(user *model.User) error                                     // 创建用户
-	UpdateUserById(user *model.User) error                                 // 更新用户
-	GetUserMinRoleSortsByIds(ids []string) ([]int, error)                  // 根据用户ID获取用户角色排序最小值
-	GetCurrentUserMinRoleSort(c *gin.Context) (uint, model.User, error)    // 获取当前用户角色排序最小值（最高等级角色）以及当前用户信息
-	ChangePwd(username string, hashNewPasswd string) error                  // 更新密码
+	GetCurrentUser(c *gin.Context) (model.User, error)                  // 获取当前登录用户信息
+	GetUserById(id string) (model.User, error)                          // 获取单个用户信息
+	CreateUser(user *model.User) error                                  // 创建用户
+	UpdateUserById(user *model.User) error                              // 更新用户
+	GetUserMinRoleSortsByIds(ids []string) ([]int, error)               // 根据用户ID获取用户角色排序最小值
+	GetCurrentUserMinRoleSort(c *gin.Context) (uint, model.User, error) // 获取当前用户角色排序最小值（最高等级角色）以及当前用户信息
+	ChangePwd(username string, hashNewPasswd string) error              // 更新密码
 }
 
 type UserRepository struct {

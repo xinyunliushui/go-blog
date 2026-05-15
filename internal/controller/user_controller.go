@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:08:27
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-15
+ * @LastEditTime: 2026-05-15 22:05:18
  * @Description: 用户控制器接口实现
  */
 package controller
@@ -179,36 +179,39 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 	var currentRoleSorts []int
 	// 当前用户角色ID集合
 	var currentRoleIds []string
-	for _, role := range currentRoles {
-		currentRoleSorts = append(currentRoleSorts, int(role.Sort))
-		currentRoleIds = append(currentRoleIds, role.ID)
+	var currentRoleSortMin int = 999 // 默认等级最低
+	// 如果当前用户有角色，则获取当前用户角色排序最小值
+	if len(currentRoles) != 0 {
+		for _, role := range currentRoles {
+			currentRoleSorts = append(currentRoleSorts, int(role.Sort))
+			currentRoleIds = append(currentRoleIds, role.ID)
+		}
+		currentRoleSortMin = funk.MinInt(currentRoleSorts)
 	}
-	// 当前用户角色排序最小值（最高等级角色）
-	currentRoleSortMin := funk.MinInt(currentRoleSorts)
 
-	// 获取前端传来的用户角色id
-	reqRoleIds := req.RoleIds
-	if len(reqRoleIds) == 0 {
-		response.Fail(ctx, nil, "用户角色不能为空")
-		return
+	// 更新的角色信息-预期目标
+	targetRoleIds := req.RoleIds
+	var targetRoles []*model.Role
+	var targetRoleSortMin int = 999 // 默认等级最低
+	if len(targetRoleIds) != 0 {
+		// 根据角色id获取角色
+		rr := repository.NewRoleRepository()
+		targetRoles, err = rr.GetRolesByIds(targetRoleIds)
+		if err != nil {
+			response.Fail(ctx, nil, "获取用户角色信息失败: ")
+			return
+		}
+		if len(targetRoles) == 0 {
+			response.Fail(ctx, nil, "未获取到角色信息")
+			return
+		}
+		var targetRoleSorts []int
+		for _, role := range targetRoles {
+			targetRoleSorts = append(targetRoleSorts, int(role.Sort))
+		}
+		// 前端传来用户角色排序最小值（最高等级角色）
+		targetRoleSortMin = funk.MinInt(targetRoleSorts)
 	}
-	// 根据角色id获取角色
-	rr := repository.NewRoleRepository()
-	roles, err := rr.GetRolesByIds(reqRoleIds)
-	if err != nil {
-		response.Fail(ctx, nil, "获取用户角色信息失败: ")
-		return
-	}
-	if len(roles) == 0 {
-		response.Fail(ctx, nil, "未获取到角色信息")
-		return
-	}
-	var reqRoleSorts []int
-	for _, role := range roles {
-		reqRoleSorts = append(reqRoleSorts, int(role.Sort))
-	}
-	// 前端传来用户角色排序最小值（最高等级角色）
-	reqRoleSortMin := funk.MinInt(reqRoleSorts)
 
 	user := model.User{
 		UUIDModel:    oldUser.UUIDModel,
@@ -220,7 +223,6 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 		Introduction: req.Introduction,
 		Status:       req.Status,
 		Creator:      ctxUser.Username,
-		Roles:        roles,
 	}
 
 	// 判断是更新自己还是更新别人
@@ -231,28 +233,25 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 			response.Fail(ctx, nil, "不能禁用自己")
 			return
 		}
-		// 不能更改自己的角色
+		// 不能变更自己的角色
 		reqDiff, currentDiff := funk.DifferenceString(req.RoleIds, currentRoleIds)
 		if len(reqDiff) > 0 || len(currentDiff) > 0 {
+			// 对比有差异，则不能更改
 			response.Fail(ctx, nil, "不能更改自己的角色")
 			return
 		}
-
 		// 不能更新自己的密码，只能在个人中心更新
 		if req.Password != "" {
 			response.Fail(ctx, nil, "请到个人中心更新自身密码")
 			return
 		}
-
-		// 密码赋值
-		user.Password = ctxUser.Password
-
+		// 角色信息沿用之前的，不做更新
+		user.Roles = currentRoles
 	} else {
 		// 如果是更新别人
-		// 用户不能更新比自己角色等级高的或者相同等级的用户
 		// 根据path中的userId获取用户角色排序最小值
 		minRoleSorts, err := uc.UserRepository.GetUserMinRoleSortsByIds([]string{userId})
-		// 如果获取用户角色排序最小值失败，并且错误不是用户未分配角色，则返回错误
+		// 获取角色处理失败 非不是用户没角色
 		if !errors.Is(err, repository.ErrUserNotAssignedRoles) {
 			if err != nil || len(minRoleSorts) == 0 {
 				response.Fail(ctx, nil, "根据用户ID获取用户角色排序最小值失败")
@@ -262,26 +261,15 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 				response.Fail(ctx, nil, "用户不能更新比自己角色等级高的或者相同等级的用户")
 				return
 			}
-
-			// 用户不能把别的用户角色等级更新得比自己高或相等
-			if currentRoleSortMin >= reqRoleSortMin {
-				response.Fail(ctx, nil, "用户不能把别的用户角色等级更新得比自己高或相等")
-				return
-			}
 		}
-
-		// 密码赋值
-		if req.Password != "" {
-			// 密码通过RSA解密
-			decodeData, err := utils.RSADecrypt([]byte(req.Password), config.Conf.Application.RSAPrivateBytes)
-			if err != nil {
-				response.Fail(ctx, nil, err.Error())
-				return
-			}
-			user.Password = utils.GenPasswd(string(decodeData))
+		if currentRoleSortMin >= targetRoleSortMin {
+			response.Fail(ctx, nil, "用户不能把别的用户角色等级更新得比自己高或相等")
+			return
 		}
+		user.Roles = targetRoles
 	}
 
+	// 更新用户
 	err = uc.UserRepository.UpdateUserById(&user)
 	if err != nil {
 		response.Fail(ctx, nil, "更新用户失败: "+err.Error())
