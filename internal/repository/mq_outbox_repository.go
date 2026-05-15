@@ -2,7 +2,7 @@
  * @Date: 2026-05-07 17:04:47
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-13 15:23:57
+ * @LastEditTime: 2026-05-15 15:21:00
  * @Description: 博客MQ投递失败时落库并定时重试仓储
  */
 package repository
@@ -25,10 +25,10 @@ const (
  * @return {IMQOutboxRepository}
  */
 type IMQOutboxRepository interface {
-	EnqueueBlogPublish(blog *model.Blog, publishErr string) error      // 将博客投递到MQ
-	ListPendingForRetry(limit int) ([]model.BlogMQOutbox, error)       // 查询待重试的博客
-	MarkSent(id uint) error                                            // 标记博客已发送
-	MarkRetry(id uint, retryCount int, errMsg string, dead bool) error // 标记博客重试
+	EnqueueBlogPublish(blog *model.Blog, publishErr string) error        // 将博客投递到MQ
+	ListPendingForRetry(limit int) ([]model.BlogMQOutbox, error)         // 查询待重试的博客
+	MarkSent(id string) error                                            // 标记博客已发送
+	MarkRetry(id string, retryCount int, errMsg string, dead bool) error // 标记博客重试
 }
 
 type MQOutboxRepository struct{}
@@ -44,7 +44,7 @@ func NewMQOutboxRepository() IMQOutboxRepository {
  * @return {error}
  */
 func (*MQOutboxRepository) EnqueueBlogPublish(blog *model.Blog, publishErr string) error {
-	if blog == nil || blog.ID == 0 {
+	if blog == nil || blog.ID == "" {
 		return errors.New("blog 无效")
 	}
 	body, err := json.Marshal(blog)
@@ -72,20 +72,18 @@ func (*MQOutboxRepository) ListPendingForRetry(limit int) ([]model.BlogMQOutbox,
 	}
 	var rows []model.BlogMQOutbox
 	err := common.DB.Where("status = ?", OutboxStatusPending).
-		Order("id ASC").
+		Order("created_at ASC").
 		Limit(limit).
 		Find(&rows).Error
 	return rows, err
 }
 
-/*
-*
 /**
-  - @description: 博客MQ投递失败时落库并定时重试仓储接口
-  - @param {id uint} id
-  - @return {error}
-*/
-func (*MQOutboxRepository) MarkSent(id uint) error {
+ * @description: 标记 Outbox 已成功投递
+ * @param {string} id
+ * @return {error}
+ */
+func (*MQOutboxRepository) MarkSent(id string) error {
 	return common.DB.Model(&model.BlogMQOutbox{}).
 		Where("id = ?", id).
 		Updates(map[string]interface{}{
@@ -94,14 +92,14 @@ func (*MQOutboxRepository) MarkSent(id uint) error {
 }
 
 /**
- * @description: 博客MQ投递失败时落库并定时重试仓储接口
- * @param {id uint} id
- * @param {retryCount int} retryCount
- * @param {errMsg string} errMsg
- * @param {dead bool} dead
+ * @description: 标记重试或死信
+ * @param {string} id
+ * @param {int} retryCount
+ * @param {string} errMsg
+ * @param {bool} dead
  * @return {error}
  */
-func (*MQOutboxRepository) MarkRetry(id uint, retryCount int, errMsg string, dead bool) error {
+func (*MQOutboxRepository) MarkRetry(id string, retryCount int, errMsg string, dead bool) error {
 	st := OutboxStatusPending
 	if dead {
 		st = OutboxStatusDead

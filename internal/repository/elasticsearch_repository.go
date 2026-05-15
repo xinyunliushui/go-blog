@@ -2,7 +2,7 @@
  * @Date: 2026-05-04 16:35:28
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-08 17:42:13
+ * @LastEditTime: 2026-05-15
  * @Description: 将博客索引到Elasticsearch
  */
 package repository
@@ -51,7 +51,7 @@ func IndexBlogToES(blog *model.Blog) error {
 
 	req := esapi.IndexRequest{
 		Index:      config.Conf.ElasticSearch.IndexName,
-		DocumentID: fmt.Sprintf("%d", blog.ID),
+		DocumentID: blog.ID,
 		Body:       bytes.NewReader(body),
 		Refresh:    "false", // 生产环境按需调整刷新策略，写入性能优先
 	}
@@ -172,11 +172,11 @@ func BuildBlogSearchQueryDSL(req vo.SearchBlogRequest) (string, error) {
 
 /***
  * @description: 更新博客正文变更后同步 ES（partial update），字段与 IndexBlogToES 中可被编辑部分一致；不改变 status/author/published_at。
- * @param {uint} blogID
+ * @param {string} blogID
  * @param {map[string]interface{}} doc
  * @return {error}
  */
-func UpdateBlogFieldsInES(blogID uint, doc map[string]interface{}) error {
+func UpdateBlogFieldsInES(blogID string, doc map[string]interface{}) error {
 	payload := map[string]interface{}{"doc": doc}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -185,7 +185,7 @@ func UpdateBlogFieldsInES(blogID uint, doc map[string]interface{}) error {
 
 	req := esapi.UpdateRequest{
 		Index:      config.Conf.ElasticSearch.IndexName,
-		DocumentID: fmt.Sprintf("%d", blogID),
+		DocumentID: blogID,
 		Body:       bytes.NewReader(body),
 		Refresh:    "false",
 	}
@@ -209,13 +209,13 @@ func UpdateBlogFieldsInES(blogID uint, doc map[string]interface{}) error {
 
 /***
  * @description: 更新博客发布状态到ES，仅更新发布状态和更新时间
- * @param {uint} blogID
+ * @param {string} blogID
  * @param {uint} status
  * @param {*time.Time} publishedAt
  * @return {error}
  */
-func UpdateBlogPublishStatusInES(blogID uint, status uint, publishedAt *time.Time) error {
-	if blogID == 0 {
+func UpdateBlogPublishStatusInES(blogID string, status uint, publishedAt *time.Time) error {
+	if blogID == "" {
 		return fmt.Errorf("blogID 无效")
 	}
 	doc := map[string]interface{}{
@@ -232,12 +232,12 @@ func UpdateBlogPublishStatusInES(blogID uint, status uint, publishedAt *time.Tim
 
 /***
  * @description: 更新博客正文变更后同步 ES（partial update），字段与 IndexBlogToES 中可被编辑部分一致；不改变 status/author/published_at。
- * @param {uint} blogID
+ * @param {string} blogID
  * @param {*model.Blog} blog
  * @return {error}
  */
-func UpdateBlogFieldsInESByBlog(blogID uint, blog *model.Blog) error {
-	if blog == nil || blogID == 0 {
+func UpdateBlogFieldsInESByBlog(blogID string, blog *model.Blog) error {
+	if blog == nil || blogID == "" {
 		return fmt.Errorf("blogID 或 blog 无效")
 	}
 	doc := map[string]interface{}{

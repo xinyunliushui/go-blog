@@ -2,7 +2,7 @@
  * @Date: 2026-04-22 17:42:02
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-06 11:05:34
+ * @LastEditTime: 2026-05-15
  * @Description: 文章DTO
  */
 package dto
@@ -14,7 +14,7 @@ import (
 
 // 文章DTO
 type BlogDto struct {
-	ID          uint       `json:"id"`
+	ID          string     `json:"id"`
 	Title       string     `json:"title"`
 	Content     string     `json:"content"`
 	Summary     string     `json:"summary"`
@@ -54,7 +54,7 @@ func ToBlogsDto(blogs []model.Blog) []BlogDto {
  * @return {BlogPostSource}
  */
 type BlogPostSource struct {
-	ID          uint       `json:"id"`
+	ID          string     `json:"id"`
 	Title       string     `json:"title"`
 	Content     string     `json:"content"`
 	Summary     string     `json:"summary"`

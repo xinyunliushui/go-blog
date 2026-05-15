@@ -77,6 +77,6 @@ func HandleArticleMessage(data []byte) error {
 		common.Log.Errorf("[消息消费] 写入 ClickHouse 失败: %v", err)
 		return err
 	}
-	common.Log.Infof("[消息消费] 文章 %d 已成功写入 ES 和 ClickHouse", blog.ID)
+	common.Log.Infof("[消息消费] 文章 %s 已成功写入 ES 和 ClickHouse", blog.ID)
 	return nil
 }

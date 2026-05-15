@@ -4,7 +4,7 @@ import "go-blog/internal/model"
 
 // 菜单DTO
 type MenuDto struct {
-	ID       uint      `json:"id"`
+	ID       string    `json:"id"`
 	Name     string    `json:"name"`
 	Title    string    `json:"title"`
 	Icon     string    `json:"icon"`
@@ -13,7 +13,7 @@ type MenuDto struct {
 	Sort     uint      `json:"sort"`
 	Status   uint      `json:"status"`
 	Type     uint      `json:"type"`
-	ParentId uint      `json:"parentId"`
+	ParentId string    `json:"parentId"`
 	Creator  string    `json:"creator"`
 	Children []MenuDto `json:"children"`
 }
@@ -41,7 +41,7 @@ func ToMenuTreeDto(menus []*model.Menu) []MenuDto {
 			Sort:     menu.Sort,
 			Status:   menu.Status,
 			Type:     menu.Type,
-			ParentId: PtrUint(menu.ParentId),
+			ParentId: PtrParentIDString(menu.ParentId),
 			Creator:  menu.Creator,
 		}
 		if len(menu.Children) > 0 {
@@ -67,7 +67,7 @@ func ToMenuDto(menu *model.Menu) MenuDto {
 		Sort:     menu.Sort,
 		Status:   menu.Status,
 		Type:     menu.Type,
-		ParentId: PtrUint(menu.ParentId),
+		ParentId: PtrParentIDString(menu.ParentId),
 		Creator:  menu.Creator,
 	}
 }

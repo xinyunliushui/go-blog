@@ -2,7 +2,7 @@
  * @Date: 2026-04-22 16:03:57
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-13 15:30:29
+ * @LastEditTime: 2026-05-15
  * @Description: 文章接口实现
  */
 package repository
@@ -24,11 +24,11 @@ import (
 )
 
 type IBlogRepository interface {
-	GetBlogs(req *vo.GetBlogListRequest) ([]model.Blog, int64, error)                      // 获取文章列表
-	GetBlogById(blogId uint) (model.Blog, error)                                           // 根据ID获取文章详情
+	GetBlogs(req *vo.GetBlogListRequest) ([]model.Blog, int64, error)                       // 获取文章列表
+	GetBlogById(blogId string) (model.Blog, error)                                          // 根据ID获取文章详情
 	CreateBlog(blog *model.Blog) error                                                     // 创建文章
-	UpdateBlogPublishStatusById(blogId uint, status uint, publishedAt *time.Time) error    // 更新文章状态
-	UpdateBlogById(blogId uint, blog *model.Blog) error                                    // 更新文章
+	UpdateBlogPublishStatusById(blogId string, status uint, publishedAt *time.Time) error  // 更新文章状态
+	UpdateBlogById(blogId string, blog *model.Blog) error                                  // 更新文章
 	SearchBlogs(req *vo.SearchBlogRequest, ctx *gin.Context) (*dto.SearchResultDTO, error) // 搜索文章
 }
 
@@ -79,7 +79,7 @@ func (*BlogRepository) CreateBlog(blog *model.Blog) error {
  * @param blogId 文章ID
  * @return model.Blog, error
  */
-func (*BlogRepository) GetBlogById(blogId uint) (model.Blog, error) {
+func (*BlogRepository) GetBlogById(blogId string) (model.Blog, error) {
 	var blog model.Blog
 	err := common.DB.Where("id = ?", blogId).First(&blog).Error
 	return blog, err
@@ -91,7 +91,7 @@ func (*BlogRepository) GetBlogById(blogId uint) (model.Blog, error) {
  * @param publishedAt 发布时间
  * @return error
  */
-func (*BlogRepository) UpdateBlogPublishStatusById(blogId uint, status uint, publishedAt *time.Time) error {
+func (*BlogRepository) UpdateBlogPublishStatusById(blogId string, status uint, publishedAt *time.Time) error {
 	var publishedAtValue interface{}
 	if publishedAt == nil {
 		publishedAtValue = nil
@@ -108,8 +108,8 @@ func (*BlogRepository) UpdateBlogPublishStatusById(blogId uint, status uint, pub
  * @param blog 文章信息
  * @return error
  */
-func (*BlogRepository) UpdateBlogById(blogId uint, blog *model.Blog) error {
-	err := common.DB.Model(&model.Blog{}).Where("id = ?", blogId).Updates(blog).Error
+func (*BlogRepository) UpdateBlogById(blogId string, blog *model.Blog) error {
+	err := common.DB.Model(&model.Blog{}).Where("id = ?", blogId).Omit("ID").Updates(blog).Error
 	return err
 }
 

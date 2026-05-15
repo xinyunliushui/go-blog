@@ -21,6 +21,9 @@ func InitRoutes() *gin.Engine {
 	// 启用全局跨域中间件（需在创建路由分组前挂载）
 	router.Use(middleware.CORSMiddleware())
 
+	// 初始化健康检查路由
+	InitHealthRoutes(router)
+
 	// api分组
 	apiGroup := router.Group("/" + config.Conf.Application.UrlPathPrefix)
 	// V1版本

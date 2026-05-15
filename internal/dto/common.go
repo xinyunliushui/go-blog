@@ -2,7 +2,7 @@
  * @Date: 2026-04-13 13:34:18
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-24 10:51:34
+ * @LastEditTime: 2026-05-15
  * @Description: 公共DTO
  */
 package dto
@@ -18,13 +18,10 @@ func PtrStr(p *string) string {
 	return *p
 }
 
-/** 将指针uint转换为uint
- * @param p *uint 指针uint
- * @return uint
- */
-func PtrUint(p *uint) uint {
+/** 将父菜单指针转为前端展示用字符串（nil 表示根） */
+func PtrParentIDString(p *string) string {
 	if p == nil {
-		return 0
+		return ""
 	}
 	return *p
 }

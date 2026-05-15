@@ -142,8 +142,7 @@ func authorizator(data interface{}, c *gin.Context) bool {
 	if err := json.Unmarshal([]byte(userStr), &user); err != nil {
 		return false
 	}
-	// 判断user.ID是否为0
-	if user.ID == 0 {
+	if user.ID == "" {
 		return false
 	}
 	// 将user保存到context, api调用时取数据方便

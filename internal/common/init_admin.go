@@ -2,7 +2,7 @@
  * @Date: 2026-04-01 22:02:21
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-24 13:57:47
+ * @LastEditTime: 2026-05-15 14:08:20
  * @Description: 初始化管理员用户和角色策略
  */
 package common
@@ -15,24 +15,45 @@ import (
 	"gorm.io/gorm"
 )
 
+/**
+ * @description: 初始化管理员用户和角色策略
+ * @param {*gorm.DB} db
+ * @return {*}
+ */
 func InitAdmin(db *gorm.DB) {
-	// 1. 创建默认管理员用户（如果不存在）
-	var admin model.User
-	roles := []*model.Role{
-		{
-			Model:   gorm.Model{ID: 1},
+	// 1. 确保管理员角色存在（动态 ID）
+	var adminRole model.Role
+	err := db.Where("keyword = ?", "role_admin").First(&adminRole).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		desc := "系统默认管理员角色"
+		adminRole = model.Role{
 			Name:    "管理员",
 			Keyword: "role_admin",
-			Desc:    new(string),
-			Sort:    1, // 排序越大权限越低
-			Status:  1, // 正常
+			Desc:    &desc,
+			Sort:    1,
+			Status:  1,
 			Creator: "系统",
-		},
+		}
+		if err := db.Create(&adminRole).Error; err != nil {
+			Log.Errorf("创建默认管理员角色失败: %v", err)
+			return
+		}
+	} else if err != nil {
+		Log.Errorf("查询管理员角色失败: %v", err)
+		return
 	}
-	result := db.Where("username = ?", "admin").First(&admin)
-	if result.Error != nil {
 
-		// 用户不存在，创建新管理员
+	// 管理员角色关联
+	rolesForAssoc := []*model.Role{&adminRole}
+
+	// 2. 创建默认管理员用户（如果不存在）
+	var admin model.User
+	result := db.Where("username = ?", "admin").First(&admin)
+	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		Log.Errorf("查询管理员用户失败: %v", result.Error)
+		return
+	}
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		admin = model.User{
 			Username:     "admin",
 			Password:     utils.GenPasswd("admin123"),
@@ -42,17 +63,14 @@ func InitAdmin(db *gorm.DB) {
 			Introduction: "系统默认管理员",
 			Status:       1,
 			Creator:      "系统",
-			Roles:        roles[:1], // 可选角色字段，用于业务逻辑
+			Roles:        rolesForAssoc, // 管理员角色关联
 		}
 		if err := db.Create(&admin).Error; err != nil {
 			Log.Errorf("创建管理员用户失败: %v", err)
+			return
 		}
 	}
 
-	// 2写入菜单
-	newMenus := make([]model.Menu, 0)
-	var uint0 uint = 0
-	var uint1 uint = 1
 	sysIconStr := "SettingOutlined"
 	systemUserStr := "/system/users"
 	usersIconStr := "UserOutlined"
@@ -60,90 +78,120 @@ func InitAdmin(db *gorm.DB) {
 	menusIconStr := "AppstoreOutlined"
 	contentIconStr := "ReadOutlined"
 	contentBlogsStr := "/content/blogs"
-	var uint5 uint = 5
-	menus := []model.Menu{
-		{
-			Model:    gorm.Model{ID: 1},
-			Name:     "system",
-			Title:    "系统管理",
-			Icon:     &sysIconStr,
-			Path:     "system",
-			Redirect: &systemUserStr,
-			Sort:     10,
-			ParentId: &uint0,
-			Roles:    roles[:1],
-			Creator:  "系统",
-		},
-		{
-			Model:    gorm.Model{ID: 2},
-			Name:     "users",
-			Title:    "用户管理",
-			Icon:     &usersIconStr,
-			Path:     "users",
-			Sort:     11,
-			ParentId: &uint1,
-			Roles:    roles[:1],
-			Creator:  "系统",
-		},
-		{
-			Model:    gorm.Model{ID: 3},
-			Name:     "roles",
-			Title:    "角色管理",
-			Icon:     &rolesIconStr,
-			Path:     "roles",
-			Sort:     12,
-			ParentId: &uint1,
-			Roles:    roles[:1],
-			Creator:  "系统",
-		},
-		{
-			Model:    gorm.Model{ID: 4},
-			Name:     "resources",
-			Title:    "资源管理",
-			Icon:     &menusIconStr,
-			Path:     "resources",
-			Sort:     13,
-			ParentId: &uint1,
-			Roles:    roles[:1],
-			Creator:  "系统",
-		},
-		{
-			Model:    gorm.Model{ID: 5},
-			Name:     "content",
-			Title:    "内容管理",
-			Icon:     &contentIconStr,
-			Path:     "content",
-			Redirect: &contentBlogsStr,
-			Type:     1,
-			Sort:     20,
-			ParentId: &uint0,
-			Roles:    roles[:1],
-			Creator:  "系统",
-		},
-		{
-			Model:    gorm.Model{ID: 6},
-			Name:     "blogs",
-			Title:    "博客列表",
-			Icon:     &contentIconStr,
-			Path:     "blogs",
-			Type:     2,
-			Sort:     21,
-			ParentId: &uint5,
-			Roles:    roles[:1],
-			Creator:  "系统",
-		},
+
+	// 3. 菜单：父子关系使用上一节创建的菜单 ID
+	systemMenu := model.Menu{
+		Name:     "system",
+		Title:    "系统管理",
+		Icon:     &sysIconStr,
+		Path:     "system",
+		Redirect: &systemUserStr,
+		Sort:     10,
+		ParentId: nil,
+		Roles:    rolesForAssoc, // 管理员角色关联
+		Creator:  "系统",
 	}
-	for _, menu := range menus {
-		err := DB.First(&menu, menu.ID).Error
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			newMenus = append(newMenus, menu)
-		}
+	if err := findOrCreateMenu(db, &systemMenu); err != nil {
+		Log.Errorf("初始化菜单 system 失败: %v", err)
+		return
 	}
-	if len(newMenus) > 0 {
-		err := DB.Create(&newMenus).Error
-		if err != nil {
-			Log.Errorf("创建管理员菜单数据失败: %v", err)
-		}
+
+	usersMenu := model.Menu{
+		Name:     "users",
+		Title:    "用户管理",
+		Icon:     &usersIconStr,
+		Path:     "users",
+		Sort:     11,
+		ParentId: &systemMenu.ID,
+		Roles:    rolesForAssoc, // 管理员角色关联
+		Creator:  "系统",
 	}
+	if err := findOrCreateMenu(db, &usersMenu); err != nil {
+		Log.Errorf("初始化菜单 users 失败: %v", err)
+		return
+	}
+
+	rolesMenu := model.Menu{
+		Name:     "roles",
+		Title:    "角色管理",
+		Icon:     &rolesIconStr,
+		Path:     "roles",
+		Sort:     12,
+		ParentId: &systemMenu.ID,
+		Roles:    rolesForAssoc, // 管理员角色关联
+		Creator:  "系统",
+	}
+	if err := findOrCreateMenu(db, &rolesMenu); err != nil {
+		Log.Errorf("初始化菜单 roles 失败: %v", err)
+		return
+	}
+
+	resourcesMenu := model.Menu{
+		Name:     "resources",
+		Title:    "资源管理",
+		Icon:     &menusIconStr,
+		Path:     "resources",
+		Sort:     13,
+		ParentId: &systemMenu.ID,
+		Roles:    rolesForAssoc, // 管理员角色关联
+		Creator:  "系统",
+	}
+	if err := findOrCreateMenu(db, &resourcesMenu); err != nil {
+		Log.Errorf("初始化菜单 resources 失败: %v", err)
+		return
+	}
+
+	contentMenu := model.Menu{
+		Name:     "content",
+		Title:    "内容管理",
+		Icon:     &contentIconStr,
+		Path:     "content",
+		Redirect: &contentBlogsStr,
+		Type:     1,
+		Sort:     20,
+		ParentId: nil,
+		Roles:    rolesForAssoc, // 管理员角色关联
+		Creator:  "系统",
+	}
+	if err := findOrCreateMenu(db, &contentMenu); err != nil {
+		Log.Errorf("初始化菜单 content 失败: %v", err)
+		return
+	}
+
+	blogsMenu := model.Menu{
+		Name:     "blogs",
+		Title:    "博客列表",
+		Icon:     &contentIconStr,
+		Path:     "blogs",
+		Type:     2,
+		Sort:     21,
+		ParentId: &contentMenu.ID,
+		Roles:    rolesForAssoc, // 管理员角色关联
+		Creator:  "系统",
+	}
+	if err := findOrCreateMenu(db, &blogsMenu); err != nil {
+		Log.Errorf("初始化菜单 blogs 失败: %v", err)
+		return
+	}
+
 	Log.Info("初始化管理员用户和角色策略完成！")
+}
+
+/**
+ * @description: 创建或加载菜单，写回 m（含 ID）。
+ * @param {*gorm.DB} db
+ * @param {*model.Menu} m
+ * @return {error}
+ */
+func findOrCreateMenu(db *gorm.DB, m *model.Menu) error {
+	var existing model.Menu
+	err := db.Where("name = ? AND path = ?", m.Name, m.Path).First(&existing).Error
+	if err == nil {
+		*m = existing
+		return nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+	return db.Create(m).Error
 }

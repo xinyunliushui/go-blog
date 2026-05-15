@@ -26,5 +26,5 @@ type CreateRoleRequest struct {
 
 // 更新角色的权限菜单
 type UpdateRoleMenusRequest struct {
-	MenuIds []uint `json:"menuIds" form:"menuIds"`
+	MenuIds []string `json:"menuIds" form:"menuIds"`
 }

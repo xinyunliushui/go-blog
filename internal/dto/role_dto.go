@@ -2,7 +2,7 @@
  * @Date: 2026-04-02 22:32:12
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-02 22:37:11
+ * @LastEditTime: 2026-05-15 14:21:44
  * @Description: Role DTO
  */
 package dto
@@ -13,15 +13,16 @@ import (
 
 // 角色DTO
 type RoleDto struct {
-	ID          uint   `json:"id"`
-	Name        string `json:"name"`
-	Keyword     string `json:"keyword"`
-	Description string `json:"description"`
-	Status      uint   `json:"status"`
-	Sort        uint   `json:"sort"`
-	Creator     string `json:"creator"`
-	CreatedAt   string `json:"createdAt"` // 年月日 时分秒，如 2006-01-02 15:04:05
-	UpdatedAt   string `json:"updatedAt"`
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Keyword     string    `json:"keyword"`
+	Description string    `json:"description"`
+	Status      uint      `json:"status"`
+	Sort        uint      `json:"sort"`
+	Creator     string    `json:"creator"`
+	CreatedAt   string    `json:"createdAt"` // 年月日 时分秒，如 2006-01-02 15:04:05
+	UpdatedAt   string    `json:"updatedAt"`
+	Menus       []MenuDto `json:"menus"`
 }
 
 const roleDateTimeLayout = "2006-01-02 15:04:05"
@@ -43,6 +44,7 @@ func ToRolesDto(roleList []*model.Role) []RoleDto {
 			Creator:     role.Creator,
 			CreatedAt:   role.CreatedAt.Format(roleDateTimeLayout),
 			UpdatedAt:   role.UpdatedAt.Format(roleDateTimeLayout),
+			Menus:       ToMenuListDto(role.Menus),
 		}
 		roles = append(roles, roleDto)
 	}

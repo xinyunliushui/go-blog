@@ -2,7 +2,7 @@
  * @Date: 2026-04-02 22:09:11
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-13 15:12:41
+ * @LastEditTime: 2026-05-15
  * @Description: 角色控制器接口实现
  */
 package controller
@@ -15,7 +15,7 @@ import (
 	"go-blog/internal/repository"
 	"go-blog/internal/response"
 	"go-blog/internal/vo"
-	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thoas/go-funk"
@@ -131,9 +131,8 @@ func (rc *RoleController) UpdateRoleById(ctx *gin.Context) {
 		response.Fail(ctx, nil, common.ValidationErrString(err))
 		return
 	}
-	// 获取path中的roleId
-	roleId, _ := strconv.Atoi(ctx.Param("roleId"))
-	if roleId <= 0 {
+	roleId := strings.TrimSpace(ctx.Param("roleId"))
+	if roleId == "" {
 		response.Fail(ctx, nil, "角色ID不正确")
 		return
 	}
@@ -148,7 +147,7 @@ func (rc *RoleController) UpdateRoleById(ctx *gin.Context) {
 
 	// 不能更新比自己角色等级高或相等的角色
 	// 根据path中的角色ID获取该角色信息
-	roles, err := rc.RoleRepository.GetRolesByIds([]uint{uint(roleId)})
+	roles, err := rc.RoleRepository.GetRolesByIds([]string{roleId})
 	if err != nil {
 		response.Fail(ctx, nil, err.Error())
 		return
@@ -178,7 +177,7 @@ func (rc *RoleController) UpdateRoleById(ctx *gin.Context) {
 	}
 
 	// 更新角色
-	err = rc.RoleRepository.UpdateRoleById(uint(roleId), &role)
+	err = rc.RoleRepository.UpdateRoleById(roleId, &role)
 	if err != nil {
 		response.Fail(ctx, nil, "更新角色失败: ")
 		return
@@ -192,12 +191,12 @@ func (rc *RoleController) UpdateRoleById(ctx *gin.Context) {
  * @return void
  */
 func (rc *RoleController) GetRoleMenusById(ctx *gin.Context) {
-	roleId, _ := strconv.Atoi(ctx.Param("roleId"))
-	if roleId <= 0 {
+	roleId := strings.TrimSpace(ctx.Param("roleId"))
+	if roleId == "" {
 		response.Fail(ctx, nil, "角色ID不正确")
 		return
 	}
-	menus, err := rc.RoleRepository.GetRoleMenusById(uint(roleId))
+	menus, err := rc.RoleRepository.GetRoleMenusById(roleId)
 	if err != nil {
 		response.Fail(ctx, nil, "获取角色的权限菜单失败: "+err.Error())
 		return
@@ -221,14 +220,13 @@ func (rc *RoleController) UpdateRoleMenusById(ctx *gin.Context) {
 		response.Fail(ctx, nil, common.ValidationErrString(err))
 		return
 	}
-	// 获取path中的roleId
-	roleId, _ := strconv.Atoi(ctx.Param("roleId"))
-	if roleId <= 0 {
+	roleId := strings.TrimSpace(ctx.Param("roleId"))
+	if roleId == "" {
 		response.Fail(ctx, nil, "角色ID不正确")
 		return
 	}
 	// 根据path中的角色ID获取该角色信息
-	roles, err := rc.RoleRepository.GetRolesByIds([]uint{uint(roleId)})
+	roles, err := rc.RoleRepository.GetRolesByIds([]string{roleId})
 	if err != nil {
 		response.Fail(ctx, nil, err.Error())
 		return
@@ -263,7 +261,7 @@ func (rc *RoleController) UpdateRoleMenusById(ctx *gin.Context) {
 	}
 
 	// 获取当前用户所拥有的权限菜单ID
-	ctxUserMenusIds := make([]uint, 0)
+	ctxUserMenusIds := make([]string, 0)
 	for _, menu := range ctxUserMenus {
 		ctxUserMenusIds = append(ctxUserMenusIds, menu.ID)
 	}
@@ -277,8 +275,8 @@ func (rc *RoleController) UpdateRoleMenusById(ctx *gin.Context) {
 	// (非管理员)不能把角色的权限菜单设置的比当前用户所拥有的权限菜单多
 	if minSort != 1 {
 		for _, id := range menuIds {
-			if !funk.Contains(ctxUserMenusIds, id) {
-				response.Fail(ctx, nil, fmt.Sprintf("无权设置ID为%d的菜单", id))
+			if !funk.ContainsString(ctxUserMenusIds, id) {
+				response.Fail(ctx, nil, fmt.Sprintf("无权设置ID为%s的菜单", id))
 				return
 			}
 		}

@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 11:23:34
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-24 11:02:35
+ * @LastEditTime: 2026-05-15
  * @Description:
  */
 
@@ -14,7 +14,7 @@ import (
 
 // 角色模型结构体
 type Role struct {
-	gorm.Model
+	UUIDModel
 	Name    string  `gorm:"type:varchar(20);not null;unique" json:"name"`
 	Keyword string  `gorm:"type:varchar(20);not null;unique" json:"keyword"`
 	Desc    *string `gorm:"type:varchar(100);" json:"desc"`
@@ -23,4 +23,9 @@ type Role struct {
 	Creator string  `gorm:"type:varchar(20);" json:"creator"`
 	Users   []*User `gorm:"many2many:user_roles" json:"users"`
 	Menus   []*Menu `gorm:"many2many:role_menus;" json:"menus"` // 角色菜单多对多关系
+}
+
+func (r *Role) BeforeCreate(tx *gorm.DB) error {
+	EnsureUUID(&r.ID)
+	return nil
 }

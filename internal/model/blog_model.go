@@ -2,7 +2,7 @@
  * @Date: 2026-04-22 15:33:08
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-08 16:59:08
+ * @LastEditTime: 2026-05-15
  * @Description: 博客模型
  */
 package model
@@ -21,7 +21,7 @@ const (
 
 // 博客模型结构体
 type Blog struct {
-	gorm.Model
+	UUIDModel
 	Title       string     `gorm:"type:varchar(100);not null;comment:'标题'"  json:"title"`
 	Content     string     `gorm:"type:mediumtext;not null;comment:'内容'" json:"content"`
 	Summary     string     `gorm:"type:varchar(500);not null;comment:'摘要'" json:"summary"`
@@ -31,4 +31,9 @@ type Blog struct {
 	Status      uint       `gorm:"type:tinyint(1);default:1;not null;comment:'1草稿, 2发布, 3私密'" json:"status"`
 	Author      string     `gorm:"type:varchar(100);not null;comment:'文章作者'" json:"author"`
 	PublishedAt *time.Time `gorm:"type:datetime;comment:'发布时间'" json:"publishedAt"`
+}
+
+func (b *Blog) BeforeCreate(tx *gorm.DB) error {
+	EnsureUUID(&b.ID)
+	return nil
 }

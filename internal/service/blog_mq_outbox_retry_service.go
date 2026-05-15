@@ -65,14 +65,14 @@ func processBlogOutboxBatch(repo repository.IMQOutboxRepository) {
 		// 反序列化 payload 为 blog
 		var blog model.Blog
 		if err := json.Unmarshal(row.Payload, &blog); err != nil {
-			common.Log.Errorf("[消息推送重试] outbox_id=%d blog_id=%d payload 解析失败: %v", row.ID, row.BlogID, err)
+			common.Log.Errorf("[消息推送重试] outbox_id=%s blog_id=%s payload 解析失败: %v", row.ID, row.BlogID, err)
 			next := row.RetryCount + 1
 			dead := next >= blogOutboxMaxRetries
 			if err2 := repo.MarkRetry(row.ID, next, err.Error(), dead); err2 != nil {
-				common.Log.Errorf("[消息推送重试] 更新 Outbox 失败 outbox_id=%d: %v", row.ID, err2)
+				common.Log.Errorf("[消息推送重试] 更新 Outbox 失败 outbox_id=%s: %v", row.ID, err2)
 			}
 			if dead {
-				common.Log.Errorf("[消息推送重试] 死信: outbox_id=%d blog_id=%d payload 损坏且已达最大重试", row.ID, row.BlogID)
+				common.Log.Errorf("[消息推送重试] 死信: outbox_id=%s blog_id=%s payload 损坏且已达最大重试", row.ID, row.BlogID)
 			}
 			continue
 		}
@@ -80,22 +80,22 @@ func processBlogOutboxBatch(repo repository.IMQOutboxRepository) {
 		if err := rabbitmq.PublishMessage(queue, &blog); err != nil {
 			next := row.RetryCount + 1
 			dead := next >= blogOutboxMaxRetries
-			common.Log.Errorf("[消息推送重试] outbox_id=%d blog_id=%d 第%d次重试仍失败: %v dead=%v",
+			common.Log.Errorf("[消息推送重试] outbox_id=%s blog_id=%s 第%d次重试仍失败: %v dead=%v",
 				row.ID, row.BlogID, next, err, dead)
 			if err2 := repo.MarkRetry(row.ID, next, err.Error(), dead); err2 != nil {
-				common.Log.Errorf("[消息推送重试] 更新 Outbox 失败 outbox_id=%d: %v", row.ID, err2)
+				common.Log.Errorf("[消息推送重试] 更新 Outbox 失败 outbox_id=%s: %v", row.ID, err2)
 				continue
 			}
 			if dead {
-				common.Log.Errorf("[消息推送重试] 死信: outbox_id=%d blog_id=%d 已达最大重试次数，请人工补投或修 MQ", row.ID, row.BlogID)
+				common.Log.Errorf("[消息推送重试] 死信: outbox_id=%s blog_id=%s 已达最大重试次数，请人工补投或修 MQ", row.ID, row.BlogID)
 			}
 			continue
 		}
 
 		if err := repo.MarkSent(row.ID); err != nil {
-			common.Log.Errorf("[消息推送重试] 标记 Outbox 成功失败 outbox_id=%d blog_id=%d: %v", row.ID, row.BlogID, err)
+			common.Log.Errorf("[消息推送重试] 标记 Outbox 成功失败 outbox_id=%s blog_id=%s: %v", row.ID, row.BlogID, err)
 			continue
 		}
-		common.Log.Infof("[消息推送重试] 重试成功 Blog MQ Outbox outbox_id=%d blog_id=%d", row.ID, row.BlogID)
+		common.Log.Infof("[消息推送重试] 重试成功 Blog MQ Outbox outbox_id=%s blog_id=%s", row.ID, row.BlogID)
 	}
 }

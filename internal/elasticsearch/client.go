@@ -106,7 +106,7 @@ func createIndexWithMapping(indexName string) error {
         },
         "mappings": {
             "properties": {
-                "id":         { "type": "integer" },
+                "id":         { "type": "keyword" },
                 "title":      {
 					"type": "text",
 					"analyzer": "blog_analyzer",

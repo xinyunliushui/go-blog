@@ -2,7 +2,7 @@
  * @Date: 2026-04-27 13:41:48
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-04 19:32:19
+ * @LastEditTime: 2026-05-15 10:38:11
  * @Description: rabbitmq
  */
 package rabbitmq
@@ -151,4 +151,24 @@ func CloseRabbitMQ() {
 	if connection != nil {
 		connection.Close()
 	}
+}
+
+/**
+ * @description: 用于就绪探针：连接未关闭且可对业务队列做 passive 探测。
+ * @return {error}
+ */
+func IsReady() error {
+	// 检查连接是否关闭
+	if connection == nil || connection.IsClosed() {
+		return fmt.Errorf("connection not ready")
+	}
+	// 检查通道是否为空
+	if channel == nil {
+		return fmt.Errorf("channel not ready")
+	}
+	// 对配置中的业务队列执行 QueueInspect（passive），确认 Broker 与队列可用
+	if _, err := channel.QueueInspect(config.Conf.Rabbitmq.QueueName); err != nil {
+		return fmt.Errorf("queue inspect: %w", err)
+	}
+	return nil
 }

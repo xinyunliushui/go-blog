@@ -35,28 +35,32 @@ func main() {
 	// 初始化日志
 	common.InitLogger()
 
-	// 初始化数据库
-	common.InitMysql()
+	// 初始化数据库（失败不退出进程，由 /ready 反映；避免 InitAdmin 在 DB 为 nil 时崩溃）
+	if err := common.InitMysql(); err != nil {
+		common.Log.Errorf("初始化 MySQL 失败（服务仍将启动，就绪探针会失败）: %v", err)
+	}
 
 	// 初始化validator（汉化）
 	common.InitValidator()
 
-	// 初始化mysql数据
-	common.InitAdmin(common.DB)
+	if common.DB != nil {
+		// 初始化mysql数据
+		common.InitAdmin(common.DB)
+	}
 
 	// 初始化RabbitMQ
 	if err := rabbitmq.InitRabbitMQ(); err != nil {
-		log.Fatalf("初始化 RabbitMQ 失败: %v", err)
+		common.Log.Errorf("初始化 RabbitMQ 失败（服务仍将启动，就绪探针会失败）: %v", err)
 	}
 
 	// 初始化Elasticsearch
 	if err := elasticsearch.InitESClient(); err != nil {
-		log.Fatalf("初始化 Elasticsearch 失败: %v", err)
+		common.Log.Errorf("初始化 Elasticsearch 失败（服务仍将启动，就绪探针会失败）: %v", err)
 	}
 
 	// 初始化ClickHouse
 	if err := clickhouse.InitClickHouse(); err != nil {
-		log.Fatalf("初始化 ClickHouse 失败: %v", err)
+		common.Log.Errorf("初始化 ClickHouse 失败（服务仍将启动，就绪探针会失败）: %v", err)
 	}
 
 	// 启动消费者：用独立 ctx，停机时先 cancel 再等 wg，最后关闭 MQ 连接，避免泄漏 goroutine 或对已关闭连接 Ack
@@ -131,11 +135,13 @@ func main() {
 	common.Log.Info("RabbitMQ 连接已关闭")
 
 	// 4. 关闭 MySQL
-	if sqlDB, err := common.DB.DB(); err == nil {
-		if err := sqlDB.Close(); err != nil {
-			common.Log.Errorf("MySQL 连接关闭出错: %v", err)
-		} else {
-			common.Log.Info("MySQL 连接已关闭")
+	if common.DB != nil {
+		if sqlDB, err := common.DB.DB(); err == nil {
+			if err := sqlDB.Close(); err != nil {
+				common.Log.Errorf("MySQL 连接关闭出错: %v", err)
+			} else {
+				common.Log.Info("MySQL 连接已关闭")
+			}
 		}
 	}
 

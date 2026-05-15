@@ -2,7 +2,7 @@
  * @Date: 2026-04-22 16:01:43
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-13 14:44:27
+ * @LastEditTime: 2026-05-15
  * @Description: 文章控制器接口实现
  */
 package controller
@@ -16,7 +16,7 @@ import (
 	"go-blog/internal/repository"
 	"go-blog/internal/response"
 	"go-blog/internal/vo"
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -64,12 +64,12 @@ func (bc *BlogController) GetBlogs(ctx *gin.Context) {
 
 // 获取文章详情
 func (bc *BlogController) GetBlogById(ctx *gin.Context) {
-	blogId, _ := strconv.Atoi(ctx.Param("blogId"))
-	if blogId <= 0 {
+	blogId := strings.TrimSpace(ctx.Param("blogId"))
+	if blogId == "" {
 		response.Fail(ctx, nil, "文章ID不正确")
 		return
 	}
-	blog, err := bc.BlogRepository.GetBlogById(uint(blogId))
+	blog, err := bc.BlogRepository.GetBlogById(blogId)
 	if err != nil {
 		response.Fail(ctx, nil, "获取文章详情失败")
 		return
@@ -112,10 +112,10 @@ func (bc *BlogController) CreateBlog(ctx *gin.Context) {
 	}
 
 	if err := rabbitmq.PublishMessage(config.Conf.Rabbitmq.QueueName, &blog); err != nil {
-		common.Log.Errorf("[MQ_OUTBOX_ALERT] blog_id=%d RabbitMQ 首次投递失败，写入本地补偿表: %v", blog.ID, err)
+		common.Log.Errorf("[MQ_OUTBOX_ALERT] blog_id=%s RabbitMQ 首次投递失败，写入本地补偿表: %v", blog.ID, err)
 		outboxRepo := repository.NewMQOutboxRepository()
 		if encErr := outboxRepo.EnqueueBlogPublish(&blog, err.Error()); encErr != nil {
-			common.Log.Errorf("[MQ_OUTBOX_ALERT] blog_id=%d 补偿表写入失败（需人工核对 MySQL 与 ES/CH）: %v", blog.ID, encErr)
+			common.Log.Errorf("[MQ_OUTBOX_ALERT] blog_id=%s 补偿表写入失败（需人工核对 MySQL 与 ES/CH）: %v", blog.ID, encErr)
 			response.Fail(ctx, gin.H{"blogId": blog.ID}, "文章已保存，但消息队列不可用且补偿记录失败，请联系管理员")
 			return
 		}
@@ -138,9 +138,8 @@ func (bc *BlogController) UpdateBlogPublishStatusById(ctx *gin.Context) {
 		response.Fail(ctx, nil, common.ValidationErrString(err))
 		return
 	}
-	// 获取路径中的blogId
-	blogId, _ := strconv.Atoi(ctx.Param("blogId"))
-	if blogId <= 0 {
+	blogId := strings.TrimSpace(ctx.Param("blogId"))
+	if blogId == "" {
 		response.Fail(ctx, nil, "文章ID不正确")
 		return
 	}
@@ -149,10 +148,10 @@ func (bc *BlogController) UpdateBlogPublishStatusById(ctx *gin.Context) {
 		now := time.Now()
 		publishedAt = &now
 	}
-	err := bc.BlogRepository.UpdateBlogPublishStatusById(uint(blogId), req.Status, publishedAt)
+	err := bc.BlogRepository.UpdateBlogPublishStatusById(blogId, req.Status, publishedAt)
 	// 更新 ES 发布状态
-	if err := repository.UpdateBlogPublishStatusInES(uint(blogId), req.Status, publishedAt); err != nil {
-		common.Log.Errorf("blog_id=%d 更新 ES 发布状态失败: %v", blogId, err)
+	if err := repository.UpdateBlogPublishStatusInES(blogId, req.Status, publishedAt); err != nil {
+		common.Log.Errorf("blog_id=%s 更新 ES 发布状态失败: %v", blogId, err)
 	}
 	if err != nil {
 		response.Fail(ctx, nil, "更新文章状态失败")
@@ -174,9 +173,8 @@ func (bc *BlogController) UpdateBlogById(ctx *gin.Context) {
 		response.Fail(ctx, nil, common.ValidationErrString(err))
 		return
 	}
-	// 获取路径中的blogId
-	blogId, _ := strconv.Atoi(ctx.Param("blogId"))
-	if blogId <= 0 {
+	blogId := strings.TrimSpace(ctx.Param("blogId"))
+	if blogId == "" {
 		response.Fail(ctx, nil, "文章ID不正确")
 		return
 	}
@@ -188,13 +186,13 @@ func (bc *BlogController) UpdateBlogById(ctx *gin.Context) {
 		Category:   &req.Category,
 		Tags:       &req.Tags,
 	}
-	err := bc.BlogRepository.UpdateBlogById(uint(blogId), &blog)
+	err := bc.BlogRepository.UpdateBlogById(blogId, &blog)
 	if err != nil {
 		response.Fail(ctx, nil, "更新文章失败")
 		return
 	}
-	if err := repository.UpdateBlogFieldsInESByBlog(uint(blogId), &blog); err != nil {
-		common.Log.Errorf("blog_id=%d 同步 ES 可检索字段失败: %v", blogId, err)
+	if err := repository.UpdateBlogFieldsInESByBlog(blogId, &blog); err != nil {
+		common.Log.Errorf("blog_id=%s 同步 ES 可检索字段失败: %v", blogId, err)
 	}
 	response.Success(ctx, nil, "更新文章成功")
 }

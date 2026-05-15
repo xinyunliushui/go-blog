@@ -2,7 +2,7 @@
  * @Date: 2026-04-08 21:27:02
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-13 15:11:57
+ * @LastEditTime: 2026-05-15
  * @Description: 菜单控制器接口实现
  */
 package controller
@@ -14,7 +14,7 @@ import (
 	"go-blog/internal/repository"
 	"go-blog/internal/response"
 	"go-blog/internal/vo"
-	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -42,14 +42,13 @@ func NewMenuController() IMenuController {
  * @return void
  */
 func (mc *MenuController) GetUserMenuTreeByUserId(c *gin.Context) {
-	// 获取路径中的userId
-	userId, _ := strconv.Atoi(c.Param("userId"))
-	if userId <= 0 {
+	userId := strings.TrimSpace(c.Param("userId"))
+	if userId == "" {
 		response.Fail(c, nil, "用户ID不正确")
 		return
 	}
 
-	menuTree, err := mc.MenuRepository.GetUserMenuTreeByUserId(uint(userId))
+	menuTree, err := mc.MenuRepository.GetUserMenuTreeByUserId(userId)
 	if err != nil {
 		response.Fail(c, nil, "获取用户的可访问菜单树失败: "+err.Error())
 		return
@@ -95,6 +94,11 @@ func (mc *MenuController) CreateMenu(c *gin.Context) {
 		return
 	}
 
+	var parentPtr *string
+	if pid := strings.TrimSpace(req.ParentId); pid != "" {
+		parentPtr = &pid
+	}
+
 	menu := model.Menu{
 		Name:     req.Name,
 		Title:    req.Title,
@@ -104,7 +108,7 @@ func (mc *MenuController) CreateMenu(c *gin.Context) {
 		Sort:     req.Sort,
 		Status:   req.Status,
 		Type:     req.Type,
-		ParentId: &req.ParentId,
+		ParentId: parentPtr,
 		Creator:  ctxUser.Username,
 	}
 
@@ -134,9 +138,8 @@ func (mc *MenuController) GetMenuTree(c *gin.Context) {
  * @return void
  */
 func (mc *MenuController) UpdateMenuById(c *gin.Context) {
-	// 获取路径中的menuId
-	menuId, _ := strconv.Atoi(c.Param("menuId"))
-	if menuId <= 0 {
+	menuId := strings.TrimSpace(c.Param("menuId"))
+	if menuId == "" {
 		response.Fail(c, nil, "菜单ID不正确")
 		return
 	}
@@ -159,6 +162,11 @@ func (mc *MenuController) UpdateMenuById(c *gin.Context) {
 		return
 	}
 
+	var parentPtr *string
+	if pid := strings.TrimSpace(req.ParentId); pid != "" {
+		parentPtr = &pid
+	}
+
 	menu := model.Menu{
 		Name:     req.Name,
 		Title:    req.Title,
@@ -168,11 +176,11 @@ func (mc *MenuController) UpdateMenuById(c *gin.Context) {
 		Sort:     req.Sort,
 		Status:   req.Status,
 		Type:     req.Type,
-		ParentId: &req.ParentId,
+		ParentId: parentPtr,
 		Creator:  ctxUser.Username,
 	}
 
-	err = mc.MenuRepository.UpdateMenuById(uint(menuId), &menu)
+	err = mc.MenuRepository.UpdateMenuById(menuId, &menu)
 	if err != nil {
 		response.Fail(c, nil, "更新菜单失败: "+err.Error())
 		return

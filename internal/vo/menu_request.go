@@ -17,5 +17,5 @@ type CreateMenuRequest struct {
 	Sort     uint   `json:"sort" form:"sort" validate:"gte=1,lte=999"`
 	Status   uint   `json:"status" form:"status" validate:"oneof=1 2"`
 	Type     uint   `json:"Type" form:"Type" validate:"oneof=1 2 3"`
-	ParentId uint   `json:"parentId" form:"parentId"`
+	ParentId string `json:"parentId" form:"parentId"`
 }

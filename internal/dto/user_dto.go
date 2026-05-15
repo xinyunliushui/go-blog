@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:01:32
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-03 14:59:22
+ * @LastEditTime: 2026-05-15
  * @Description: user dto
  */
 package dto
@@ -11,13 +11,13 @@ import "go-blog/internal/model"
 
 // 当前用户信息DTO
 type UserInfoDto struct {
-	ID           uint   `json:"id"`
-	Username     string `json:"username"`
-	Mobile       string `json:"mobile"`
-	Avatar       string `json:"avatar"`
-	Nickname     string `json:"nickname"`
-	Introduction string `json:"introduction"`
-	RoleIds      []uint `json:"roleIds"`
+	ID           string   `json:"id"`
+	Username     string   `json:"username"`
+	Mobile       string   `json:"mobile"`
+	Avatar       string   `json:"avatar"`
+	Nickname     string   `json:"nickname"`
+	Introduction string   `json:"introduction"`
+	RoleIds      []string `json:"roleIds"`
 }
 
 /** 将用户转换为当前用户信息DTO
@@ -26,7 +26,7 @@ type UserInfoDto struct {
  */
 func ToUserInfoDto(user model.User) UserInfoDto {
 	// 角色色处理
-	roleIds := make([]uint, 0)
+	roleIds := make([]string, 0)
 	for _, role := range user.Roles {
 		roleIds = append(roleIds, role.ID)
 	}
@@ -43,15 +43,15 @@ func ToUserInfoDto(user model.User) UserInfoDto {
 
 // 返回给前端的用户列表
 type UsersDto struct {
-	ID           uint   `json:"id"`
-	Username     string `json:"username"`
-	Mobile       string `json:"mobile"`
-	Avatar       string `json:"avatar"`
-	Nickname     string `json:"nickname"`
-	Introduction string `json:"introduction"`
-	Status       uint   `json:"status"`
-	Creator      string `json:"creator"`
-	RoleIds      []uint `json:"roleIds"`
+	ID           string   `json:"id"`
+	Username     string   `json:"username"`
+	Mobile       string   `json:"mobile"`
+	Avatar       string   `json:"avatar"`
+	Nickname     string   `json:"nickname"`
+	Introduction string   `json:"introduction"`
+	Status       uint     `json:"status"`
+	Creator      string   `json:"creator"`
+	RoleIds      []string `json:"roleIds"`
 }
 
 /** 将用户列表转换为用户DTO列表
@@ -71,7 +71,7 @@ func ToUsersDto(userList []model.User) []UsersDto {
 			Status:       user.Status,
 			Creator:      user.Creator,
 		}
-		roleIds := make([]uint, 0)
+		roleIds := make([]string, 0)
 		for _, role := range user.Roles {
 			roleIds = append(roleIds, role.ID)
 		}

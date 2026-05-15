@@ -25,7 +25,7 @@ type GetBlogListRequest struct {
 
 // 更新文章状态
 type UpdateBlogPublishStatusRequest struct {
-	BlogId uint `json:"blogId" validate:"required"`
+	BlogId string `json:"blogId" validate:"required"`
 	// 1草稿, 2发布, 3私密，草稿是默认态
 	Status uint `json:"status" validate:"required,oneof=2 3"`
 }

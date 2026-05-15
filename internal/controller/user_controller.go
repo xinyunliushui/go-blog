@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 22:08:27
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-14 15:08:50
+ * @LastEditTime: 2026-05-15
  * @Description: 用户控制器接口实现
  */
 package controller
@@ -17,7 +17,7 @@ import (
 	"go-blog/internal/response"
 	"go-blog/internal/utils"
 	"go-blog/internal/vo"
-	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thoas/go-funk"
@@ -143,8 +143,8 @@ func (uc *UserController) CreateUser(ctx *gin.Context) {
  * @return void
  */
 func (uc *UserController) UpdateUserById(ctx *gin.Context) {
-	userId, _ := strconv.Atoi(ctx.Param("userId"))
-	if userId <= 0 {
+	userId := strings.TrimSpace(ctx.Param("userId"))
+	if userId == "" {
 		response.Fail(ctx, nil, "用户ID不正确")
 		return
 	}
@@ -161,7 +161,7 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 	}
 
 	// 根据path中的userId获取用户信息
-	oldUser, err := uc.UserRepository.GetUserById(uint(userId))
+	oldUser, err := uc.UserRepository.GetUserById(userId)
 	if err != nil {
 		response.Fail(ctx, nil, "获取需要更新的用户信息失败: "+err.Error())
 		return
@@ -178,7 +178,7 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 	// 获取当前用户角色的排序，和前端传来的角色排序做比较
 	var currentRoleSorts []int
 	// 当前用户角色ID集合
-	var currentRoleIds []uint
+	var currentRoleIds []string
 	for _, role := range currentRoles {
 		currentRoleSorts = append(currentRoleSorts, int(role.Sort))
 		currentRoleIds = append(currentRoleIds, role.ID)
@@ -211,7 +211,7 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 	reqRoleSortMin := funk.MinInt(reqRoleSorts)
 
 	user := model.User{
-		Model:        oldUser.Model,
+		UUIDModel:    oldUser.UUIDModel,
 		Username:     req.Username,
 		Password:     oldUser.Password,
 		Mobile:       req.Mobile,
@@ -224,7 +224,7 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 	}
 
 	// 判断是更新自己还是更新别人
-	if userId == int(ctxUser.ID) {
+	if userId == ctxUser.ID {
 		// 如果是更新自己
 		// 不能禁用自己
 		if req.Status == 2 {
@@ -232,8 +232,8 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 			return
 		}
 		// 不能更改自己的角色
-		reqDiff, currentDiff := funk.Difference(req.RoleIds, currentRoleIds)
-		if len(reqDiff.([]uint)) > 0 || len(currentDiff.([]uint)) > 0 {
+		reqDiff, currentDiff := funk.DifferenceString(req.RoleIds, currentRoleIds)
+		if len(reqDiff) > 0 || len(currentDiff) > 0 {
 			response.Fail(ctx, nil, "不能更改自己的角色")
 			return
 		}
@@ -250,8 +250,8 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 	} else {
 		// 如果是更新别人
 		// 用户不能更新比自己角色等级高的或者相同等级的用户
-		// 根据path中的userIdID获取用户角色排序最小值
-		minRoleSorts, err := uc.UserRepository.GetUserMinRoleSortsByIds([]uint{uint(userId)})
+		// 根据path中的userId获取用户角色排序最小值
+		minRoleSorts, err := uc.UserRepository.GetUserMinRoleSortsByIds([]string{userId})
 		// 如果获取用户角色排序最小值失败，并且错误不是用户未分配角色，则返回错误
 		if !errors.Is(err, repository.ErrUserNotAssignedRoles) {
 			if err != nil || len(minRoleSorts) == 0 {

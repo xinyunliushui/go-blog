@@ -2,7 +2,7 @@
  * @Date: 2026-03-25 21:57:13
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-13 16:29:19
+ * @LastEditTime: 2026-05-15 14:07:13
  * @Description: value object for user request
  */
 package vo
@@ -21,14 +21,14 @@ type UserListRequest struct {
 
 // 创建或更新用户结构体
 type CreateOrUpdateUserRequest struct {
-	Username     string `form:"username" json:"username" validate:"required,min=2,max=20"`
-	Password     string `form:"password" json:"password"`
-	Mobile       string `form:"mobile" json:"mobile" validate:"required,checkMobile"`
-	Avatar       string `form:"avatar" json:"avatar"`
-	Nickname     string `form:"nickname" json:"nickname" validate:"min=0,max=20"`
-	Introduction string `form:"introduction" json:"introduction" validate:"min=0,max=255"`
-	Status       uint   `form:"status" json:"status" validate:"oneof=1 2"`
-	RoleIds      []uint `form:"roleIds" json:"roleIds" validate:"required"`
+	Username     string   `form:"username" json:"username" validate:"required,min=2,max=20"`
+	Password     string   `form:"password" json:"password"`
+	Mobile       string   `form:"mobile" json:"mobile" validate:"required,checkMobile"`
+	Avatar       string   `form:"avatar" json:"avatar"`
+	Nickname     string   `form:"nickname" json:"nickname" validate:"min=0,max=20"`
+	Introduction string   `form:"introduction" json:"introduction" validate:"min=0,max=255"`
+	Status       uint     `form:"status" json:"status" validate:"oneof=1 2"`
+	RoleIds      []string `form:"roleIds" json:"roleIds"`
 }
 
 // 更新密码结构体
