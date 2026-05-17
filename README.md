@@ -1,14 +1,13 @@
 ## go-blog
 
 ## 简介
-- 博客以及管理后台，前后端分离，此项目为后端服务。
-- 后端Go包含了gin、gorm、jwt、MySQL、RabbitMQ、ElasticSearch和ClickHouse等的使用。其中MQ、ES、CH的使用仅为了学习。
-- 管理后台权限管理采用RBAC方案。
+- 博客以及管理后台，前后端分离，此项目为后端服务。其中包含用户管理、角色管理、资源管理以及博客列表管理。
+- 后端Go包含了gin、gorm、go-jwt、MySQL、RabbitMQ、ElasticSearch和ClickHouse等的使用。其中MQ、ES、CH的使用仅为了学习。
+- 管理后台权限采用RBAC方案。用户、角色、资源三张主表以及用户角色关联表、角色资源关联表。
 - 对应的博客和管理平台前端项目[web-blog](https://github.com/xinyunliushui/web-blog)。
 
 ## 项目结构
 项目目录结构参照[标准Go项目布局](https://github.com/golang-standards/project-layout/blob/master/README_zh.md)
-
 ```text
 go-blog/
 ├── main.go                          # 入口：配置加载、组件初始化、HTTP 服务、MQ 消费与 Outbox 重试协程
@@ -37,15 +36,42 @@ go-blog/
 ```
 
 
-## 启动前准备
-以下环境以及预设好对应的`database`，用户名和密码记得切换
+## 启动前依赖准备
+以下环境以及预设好对应的`database`，用户名和密码记得更换
 - `MySQL` 需要前置创建database，名称是go_blog
-- `RabbitMQ` 需要前置创建vhost，名称是go_blog
-- `Elasticsearch` 需要前置安装好ik_max_word中文分词器
+``` shell
+# 注意数据库字符集格式和项目配置保持一致
+```
+- `RabbitMQ` 需要前置创建vhost，名称是go_blog，并给用户授权
+```shell
+# 创建vhost go_blog
+rabbitmqctl add_vhost go_blog
+# 查看vhost go_blog的用户列表
+rabbitmqctl list_permissions -p go_blog
+# vhost授权给用户admin
+rabbitmqctl set_permissions -p go_blog admin "." "." ".*"
+```
+- `Elasticsearch` 需要前置安装好ik_max_word中文分词器，优化博客文章存储
+```shell
+# 安装对应版本的分词器
+./bin/elasticsearch-plugin install https://release.infinilabs.com/analysis-ik/stable/elasticsearch-analysis-ik-<版本号>.zip
+# 查看配置的插件
+./bin/elasticsearch-plugin list
+```
+
 - `ClickHouse` 需要前置创建database，名称是go_blog
 
+- 本地开发
+```shell
+# 安装依赖
+go mod tidy
+# 本地启动
+go run .\main.go
+```
 
-## 技术栈
+
+
+## 相关三方依赖
 - [`Gin`](https://github.com/gin-gonic/gin) 一个类似于martini但拥有更好性能的API框架, 由于使用了httprouter, 速度提高了近40倍
 - `MySQL` 采用的是MySql数据库
 - [`gin-jwt`](https://github.com/appleboy/gin-jwt) 使用JWT轻量级认证, 并提供活跃用户Token刷新功能
@@ -61,12 +87,13 @@ go-blog/
 - `CORSMiddleware` -- 跨域中间件 -- 解决跨域问题
 
 
-## 其他
-- 密码的传输使用非对称加密、入库使用不可逆加密
-- 日志管理使用Zap配合Lumberjack（由于zap不具备日志切割功能, 使用lumberjack配合）
-- API进行了简单的版本管理，增加了路径v1进行隔离
-- 服务有存活/就绪探针，保障服务的稳定性
-- GORM中将默认的ID替换为UUID，使用使用字符串类型 + BeforeCreate钩子方案
+## 其他说明
+- 密码的传输使用非对称加密、入库使用不可逆加密。
+- 日志管理使用Zap配合Lumberjack（由于zap不具备日志切割功能, 使用lumberjack配合）。
+- API进行了简单的版本管理，增加了路径v1进行隔离。
+- 服务有存活/就绪探针，保障服务的稳定性。其中依赖的相关数据库资初始化失败时不会导致主程序启动失败，但在就绪探针中会有体现。
+- GORM中将默认的ID替换为UUID，使用使用字符串类型 + BeforeCreate钩子方案。
+- 主程序会监听退出信号，实现优雅关闭和释放相关资源。
 
 ## TODO
 - MQ消费失败后目前直接丢弃了，需要考虑补偿方案

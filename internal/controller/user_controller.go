@@ -48,7 +48,7 @@ func NewUserController() IUserController {
 func (uc *UserController) GetUserInfo(ctx *gin.Context) {
 	user, err := uc.UserRepository.GetCurrentUser(ctx)
 	if err != nil {
-		response.Fail(ctx, nil, "获取用户信息失败")
+		response.FailErr(ctx, nil, "获取用户信息失败", err)
 		return
 	}
 	// 返回
@@ -73,7 +73,7 @@ func (uc *UserController) GetUsers(ctx *gin.Context) {
 	}
 	users, total, err := uc.UserRepository.GetUsers(&req)
 	if err != nil {
-		response.Fail(ctx, nil, "获取用户列表失败："+err.Error())
+		response.FailErr(ctx, nil, "获取用户列表失败", err)
 		return
 	}
 	response.Success(ctx, gin.H{"content": dto.ToUsersDto(users), "total": total, "page": req.Page, "pageSize": req.PageSize}, "获取用户列表成功")
@@ -102,7 +102,7 @@ func (uc *UserController) CreateUser(ctx *gin.Context) {
 		rr := repository.NewRoleRepository()
 		roles, err = rr.GetRolesByIds(req.RoleIds)
 		if err != nil {
-			response.Fail(ctx, nil, "根据角色ID获取角色信息失败: "+err.Error())
+			response.FailErr(ctx, nil, "根据角色ID获取角色信息失败", err)
 			return
 		}
 	}
@@ -125,14 +125,14 @@ func (uc *UserController) CreateUser(ctx *gin.Context) {
 		// 密码通过RSA解密
 		decodeData, err := utils.RSADecrypt([]byte(req.Password), config.Conf.Application.RSAPrivateBytes)
 		if err != nil {
-			response.Fail(ctx, nil, err.Error())
+			response.FailErr(ctx, nil, "密码解密失败", err)
 			return
 		}
 		user.Password = utils.GenPasswd(string(decodeData))
 	}
 	err = uc.UserRepository.CreateUser(&user)
 	if err != nil {
-		response.Fail(ctx, nil, "创建用户失败: ")
+		response.FailErr(ctx, nil, "创建用户失败", err)
 		return
 	}
 	response.Success(ctx, nil, "创建用户成功")
@@ -163,14 +163,14 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 	// 根据path中的userId获取用户信息
 	oldUser, err := uc.UserRepository.GetUserById(userId)
 	if err != nil {
-		response.Fail(ctx, nil, "获取需要更新的用户信息失败: "+err.Error())
+		response.FailErr(ctx, nil, "获取需要更新的用户信息失败", err)
 		return
 	}
 
 	// 获取当前用户
 	ctxUser, err := uc.UserRepository.GetCurrentUser(ctx)
 	if err != nil {
-		response.Fail(ctx, nil, err.Error())
+		response.FailErr(ctx, nil, "获取当前用户信息失败", err)
 		return
 	}
 	// 获取当前用户的所有角色
@@ -198,7 +198,7 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 		rr := repository.NewRoleRepository()
 		targetRoles, err = rr.GetRolesByIds(targetRoleIds)
 		if err != nil {
-			response.Fail(ctx, nil, "获取用户角色信息失败: ")
+			response.FailErr(ctx, nil, "获取用户角色信息失败", err)
 			return
 		}
 		if len(targetRoles) == 0 {
@@ -254,7 +254,7 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 		// 获取角色处理失败 非不是用户没角色
 		if !errors.Is(err, repository.ErrUserNotAssignedRoles) {
 			if err != nil || len(minRoleSorts) == 0 {
-				response.Fail(ctx, nil, "根据用户ID获取用户角色排序最小值失败")
+				response.FailErr(ctx, nil, "根据用户ID获取用户角色排序最小值失败", err)
 				return
 			}
 			if currentRoleSortMin >= minRoleSorts[0] {
@@ -272,7 +272,7 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 	// 更新用户
 	err = uc.UserRepository.UpdateUserById(&user)
 	if err != nil {
-		response.Fail(ctx, nil, "更新用户失败: "+err.Error())
+		response.FailErr(ctx, nil, "更新用户失败", err)
 		return
 	}
 	response.Success(ctx, nil, "更新用户成功")
@@ -301,12 +301,12 @@ func (uc *UserController) ChangePwd(ctx *gin.Context) {
 	// 密码通过RSA解密
 	decodeOldPassword, err := utils.RSADecrypt([]byte(req.OldPassword), config.Conf.Application.RSAPrivateBytes)
 	if err != nil {
-		response.Fail(ctx, nil, err.Error())
+		response.FailErr(ctx, nil, "密码解密失败", err)
 		return
 	}
 	decodeNewPassword, err := utils.RSADecrypt([]byte(req.NewPassword), config.Conf.Application.RSAPrivateBytes)
 	if err != nil {
-		response.Fail(ctx, nil, err.Error())
+		response.FailErr(ctx, nil, "密码解密失败", err)
 		return
 	}
 	req.OldPassword = string(decodeOldPassword)
@@ -315,7 +315,7 @@ func (uc *UserController) ChangePwd(ctx *gin.Context) {
 	// 获取当前用户
 	user, err := uc.UserRepository.GetCurrentUser(ctx)
 	if err != nil {
-		response.Fail(ctx, nil, err.Error())
+		response.FailErr(ctx, nil, "获取当前用户信息失败", err)
 		return
 	}
 	// 获取用户的真实正确密码
@@ -323,13 +323,13 @@ func (uc *UserController) ChangePwd(ctx *gin.Context) {
 	// 判断前端请求的密码是否等于真实密码
 	err = utils.ComparePasswd(correctPasswd, req.OldPassword)
 	if err != nil {
-		response.Fail(ctx, nil, "原密码有误")
+		response.FailErr(ctx, nil, "原密码有误", err)
 		return
 	}
 	// 更新密码
 	err = uc.UserRepository.ChangePwd(user.Username, utils.GenPasswd(req.NewPassword))
 	if err != nil {
-		response.Fail(ctx, nil, "更新密码失败: "+err.Error())
+		response.FailErr(ctx, nil, "更新密码失败", err)
 		return
 	}
 	response.Success(ctx, nil, "更新密码成功")

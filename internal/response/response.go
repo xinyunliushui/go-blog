@@ -10,6 +10,8 @@ package response
 import (
 	"net/http"
 
+	"go-blog/internal/common"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -43,4 +45,35 @@ func Success(c *gin.Context, data interface{}, message string) {
  */
 func Fail(c *gin.Context, data interface{}, message string) {
 	Response(c, http.StatusBadRequest, 500, data, message)
+}
+
+/** 返回前端-失败并记录底层错误
+ * @param c *gin.Context 上下文
+ * @param data interface{} 响应数据
+ * @param message string 响应消息
+ * @param err error 底层错误
+ * @return void
+ */
+func FailErr(c *gin.Context, data interface{}, message string, err error) {
+	if err != nil {
+		logAPIFail(c, message, err)
+	}
+	Response(c, http.StatusBadRequest, 500, data, message)
+}
+
+/** 记录API失败日志
+ * @param c *gin.Context 上下文
+ * @param message string 响应消息
+ * @param err error 底层错误
+ * @return void
+ */
+func logAPIFail(c *gin.Context, message string, err error) {
+	if common.Log == nil {
+		return
+	}
+	path := c.FullPath()
+	if path == "" {
+		path = c.Request.URL.Path
+	}
+	common.Log.Errorf("[%s] %s - %s: %v", c.Request.Method, path, message, err)
 }

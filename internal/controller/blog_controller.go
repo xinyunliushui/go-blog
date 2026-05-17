@@ -56,7 +56,7 @@ func (bc *BlogController) GetBlogs(ctx *gin.Context) {
 	}
 	blogs, total, err := bc.BlogRepository.GetBlogs(&req)
 	if err != nil {
-		response.Fail(ctx, nil, "获取文章列表失败")
+		response.FailErr(ctx, nil, "获取文章列表失败", err)
 		return
 	}
 	response.Success(ctx, gin.H{"content": dto.ToBlogsDto(blogs), "total": total, "page": req.Page, "pageSize": req.PageSize}, "获取文章列表成功")
@@ -71,7 +71,7 @@ func (bc *BlogController) GetBlogById(ctx *gin.Context) {
 	}
 	blog, err := bc.BlogRepository.GetBlogById(blogId)
 	if err != nil {
-		response.Fail(ctx, nil, "获取文章详情失败")
+		response.FailErr(ctx, nil, "获取文章详情失败", err)
 		return
 	}
 	response.Success(ctx, blog, "获取文章详情成功")
@@ -93,7 +93,7 @@ func (bc *BlogController) CreateBlog(ctx *gin.Context) {
 	ur := repository.NewUserRepository()
 	ctxUser, err := ur.GetCurrentUser(ctx)
 	if err != nil {
-		response.Fail(ctx, nil, "获取当前用户信息失败")
+		response.FailErr(ctx, nil, "获取当前用户信息失败", err)
 		return
 	}
 	blog := model.Blog{
@@ -107,7 +107,7 @@ func (bc *BlogController) CreateBlog(ctx *gin.Context) {
 	}
 	err = bc.BlogRepository.CreateBlog(&blog)
 	if err != nil {
-		response.Fail(ctx, nil, "创建文章失败")
+		response.FailErr(ctx, nil, "创建文章失败", err)
 		return
 	}
 
@@ -154,7 +154,7 @@ func (bc *BlogController) UpdateBlogPublishStatusById(ctx *gin.Context) {
 		common.Log.Errorf("blog_id=%s 更新 ES 发布状态失败: %v", blogId, err)
 	}
 	if err != nil {
-		response.Fail(ctx, nil, "更新文章状态失败")
+		response.FailErr(ctx, nil, "更新文章状态失败", err)
 		return
 	}
 	response.Success(ctx, nil, "更新文章状态成功")
@@ -188,7 +188,7 @@ func (bc *BlogController) UpdateBlogById(ctx *gin.Context) {
 	}
 	err := bc.BlogRepository.UpdateBlogById(blogId, &blog)
 	if err != nil {
-		response.Fail(ctx, nil, "更新文章失败")
+		response.FailErr(ctx, nil, "更新文章失败", err)
 		return
 	}
 	if err := repository.UpdateBlogFieldsInESByBlog(blogId, &blog); err != nil {
@@ -212,8 +212,7 @@ func (bc *BlogController) SearchBlogs(ctx *gin.Context) {
 	}
 	searchBlogDto, err := bc.BlogRepository.SearchBlogs(&req, ctx)
 	if err != nil {
-		common.Log.Errorf("搜索文章失败: %v", err)
-		response.Fail(ctx, nil, "搜索文章失败")
+		response.FailErr(ctx, nil, "搜索文章失败", err)
 		return
 	}
 	response.Success(ctx, searchBlogDto, "搜索文章成功")

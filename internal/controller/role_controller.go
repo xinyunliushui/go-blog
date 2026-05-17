@@ -59,7 +59,7 @@ func (rc *RoleController) GetRoles(ctx *gin.Context) {
 	// 获取角色列表
 	roles, total, err := rc.RoleRepository.GetRoles(&req)
 	if err != nil {
-		response.Fail(ctx, nil, "获取角色列表失败：")
+		response.FailErr(ctx, nil, "获取角色列表失败", err)
 		return
 	}
 	response.Success(ctx, gin.H{"content": dto.ToRolesDto(roles), "total": total, "page": req.Page, "pageSize": req.PageSize}, "获取角色列表成功")
@@ -86,7 +86,7 @@ func (rc *RoleController) CreateRole(ctx *gin.Context) {
 	uc := repository.NewUserRepository()
 	sort, ctxUser, err := uc.GetCurrentUserMinRoleSort(ctx)
 	if err != nil {
-		response.Fail(ctx, nil, "获取当前用户最高角色等级失败: ")
+		response.FailErr(ctx, nil, "获取当前用户最高角色等级失败", err)
 		return
 	}
 
@@ -108,7 +108,7 @@ func (rc *RoleController) CreateRole(ctx *gin.Context) {
 	// 创建角色
 	err = rc.RoleRepository.CreateRole(&role)
 	if err != nil {
-		response.Fail(ctx, nil, "创建角色失败: ")
+		response.FailErr(ctx, nil, "创建角色失败", err)
 		return
 	}
 	response.Success(ctx, nil, "创建角色成功")
@@ -141,7 +141,7 @@ func (rc *RoleController) UpdateRoleById(ctx *gin.Context) {
 	ur := repository.NewUserRepository()
 	minSort, ctxUser, err := ur.GetCurrentUserMinRoleSort(ctx)
 	if err != nil {
-		response.Fail(ctx, nil, err.Error())
+		response.FailErr(ctx, nil, "获取当前用户最高角色等级失败", err)
 		return
 	}
 
@@ -149,7 +149,7 @@ func (rc *RoleController) UpdateRoleById(ctx *gin.Context) {
 	// 根据path中的角色ID获取该角色信息
 	roles, err := rc.RoleRepository.GetRolesByIds([]string{roleId})
 	if err != nil {
-		response.Fail(ctx, nil, err.Error())
+		response.FailErr(ctx, nil, "获取角色信息失败", err)
 		return
 	}
 	if len(roles) == 0 {
@@ -179,7 +179,7 @@ func (rc *RoleController) UpdateRoleById(ctx *gin.Context) {
 	// 更新角色
 	err = rc.RoleRepository.UpdateRoleById(roleId, &role)
 	if err != nil {
-		response.Fail(ctx, nil, "更新角色失败: ")
+		response.FailErr(ctx, nil, "更新角色失败", err)
 		return
 	}
 
@@ -198,7 +198,7 @@ func (rc *RoleController) GetRoleMenusById(ctx *gin.Context) {
 	}
 	menus, err := rc.RoleRepository.GetRoleMenusById(roleId)
 	if err != nil {
-		response.Fail(ctx, nil, "获取角色的权限菜单失败: "+err.Error())
+		response.FailErr(ctx, nil, "获取角色的权限菜单失败", err)
 		return
 	}
 	response.Success(ctx, gin.H{"menus": menus}, "获取角色的权限菜单成功")
@@ -228,7 +228,7 @@ func (rc *RoleController) UpdateRoleMenusById(ctx *gin.Context) {
 	// 根据path中的角色ID获取该角色信息
 	roles, err := rc.RoleRepository.GetRolesByIds([]string{roleId})
 	if err != nil {
-		response.Fail(ctx, nil, err.Error())
+		response.FailErr(ctx, nil, "获取目标角色信息失败", err)
 		return
 	}
 	if len(roles) == 0 {
@@ -240,7 +240,7 @@ func (rc *RoleController) UpdateRoleMenusById(ctx *gin.Context) {
 	ur := repository.NewUserRepository()
 	minSort, ctxUser, err := ur.GetCurrentUserMinRoleSort(ctx)
 	if err != nil {
-		response.Fail(ctx, nil, err.Error())
+		response.FailErr(ctx, nil, "获取当前用户最高角色等级失败", err)
 		return
 	}
 
@@ -256,7 +256,7 @@ func (rc *RoleController) UpdateRoleMenusById(ctx *gin.Context) {
 	mr := repository.NewMenuRepository()
 	ctxUserMenus, err := mr.GetUserMenusByUserId(ctxUser.ID)
 	if err != nil {
-		response.Fail(ctx, nil, "获取当前用户的可访问菜单列表失败: "+err.Error())
+		response.FailErr(ctx, nil, "获取当前用户的可访问菜单列表失败", err)
 		return
 	}
 
@@ -294,7 +294,7 @@ func (rc *RoleController) UpdateRoleMenusById(ctx *gin.Context) {
 		// 根据menuIds查询查询菜单
 		menus, err := mr.GetMenus()
 		if err != nil {
-			response.Fail(ctx, nil, "获取菜单列表失败: "+err.Error())
+			response.FailErr(ctx, nil, "获取菜单列表失败", err)
 			return
 		}
 		for _, menuId := range menuIds {
@@ -310,7 +310,7 @@ func (rc *RoleController) UpdateRoleMenusById(ctx *gin.Context) {
 
 	err = rc.RoleRepository.UpdateRoleMenus(roles[0])
 	if err != nil {
-		response.Fail(ctx, nil, "更新角色的权限菜单失败: "+err.Error())
+		response.FailErr(ctx, nil, "更新角色的权限菜单失败", err)
 		return
 	}
 

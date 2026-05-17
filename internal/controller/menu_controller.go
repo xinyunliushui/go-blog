@@ -50,7 +50,7 @@ func (mc *MenuController) GetUserMenuTreeByUserId(c *gin.Context) {
 
 	menuTree, err := mc.MenuRepository.GetUserMenuTreeByUserId(userId)
 	if err != nil {
-		response.Fail(c, nil, "获取用户的可访问菜单树失败: "+err.Error())
+		response.FailErr(c, nil, "获取用户的可访问菜单树失败", err)
 		return
 	}
 	response.Success(c, menuTree, "获取用户的可访问菜单树成功")
@@ -63,7 +63,7 @@ func (mc *MenuController) GetUserMenuTreeByUserId(c *gin.Context) {
 func (mc *MenuController) GetMenus(c *gin.Context) {
 	menus, err := mc.MenuRepository.GetMenus()
 	if err != nil {
-		response.Fail(c, nil, "获取菜单列表失败: "+err.Error())
+		response.FailErr(c, nil, "获取菜单列表失败", err)
 		return
 	}
 	response.Success(c, dto.ToMenuListDto(menus), "获取菜单列表成功")
@@ -90,7 +90,7 @@ func (mc *MenuController) CreateMenu(c *gin.Context) {
 	ur := repository.NewUserRepository()
 	ctxUser, err := ur.GetCurrentUser(c)
 	if err != nil {
-		response.Fail(c, nil, "获取当前用户信息失败")
+		response.FailErr(c, nil, "获取当前用户信息失败", err)
 		return
 	}
 
@@ -114,7 +114,7 @@ func (mc *MenuController) CreateMenu(c *gin.Context) {
 
 	err = mc.MenuRepository.CreateMenu(&menu)
 	if err != nil {
-		response.Fail(c, nil, "创建菜单失败: "+err.Error())
+		response.FailErr(c, nil, "创建菜单失败", err)
 		return
 	}
 	response.Success(c, nil, "创建菜单成功")
@@ -127,7 +127,7 @@ func (mc *MenuController) CreateMenu(c *gin.Context) {
 func (mc *MenuController) GetMenuTree(c *gin.Context) {
 	menuTree, err := mc.MenuRepository.GetMenuTree()
 	if err != nil {
-		response.Fail(c, nil, "获取菜单树失败: "+err.Error())
+		response.FailErr(c, nil, "获取菜单树失败", err)
 		return
 	}
 	response.Success(c, menuTree, "获取菜单树成功")
@@ -158,7 +158,7 @@ func (mc *MenuController) UpdateMenuById(c *gin.Context) {
 	ur := repository.NewUserRepository()
 	ctxUser, err := ur.GetCurrentUser(c)
 	if err != nil {
-		response.Fail(c, nil, "获取当前用户信息失败")
+		response.FailErr(c, nil, "获取当前用户信息失败", err)
 		return
 	}
 
@@ -182,7 +182,7 @@ func (mc *MenuController) UpdateMenuById(c *gin.Context) {
 
 	err = mc.MenuRepository.UpdateMenuById(menuId, &menu)
 	if err != nil {
-		response.Fail(c, nil, "更新菜单失败: "+err.Error())
+		response.FailErr(c, nil, "更新菜单失败", err)
 		return
 	}
 	response.Success(c, nil, "更新菜单成功")

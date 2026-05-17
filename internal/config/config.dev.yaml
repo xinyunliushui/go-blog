@@ -57,9 +57,9 @@ elastic-search:
   # 索引名称
   index-name: go_blog
   # 用户名
-  username: root
+  username: admin
   # 密码
-  password: Z*0gbrjn17KAhO_s5X=9
+  password: 123456
 
 # clickhouse配置
 click-house:

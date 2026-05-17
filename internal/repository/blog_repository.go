@@ -1,8 +1,8 @@
 /*
  * @Date: 2026-04-22 16:03:57
  * @Author: zhongwenhao
- * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-15
+ * @LastEditors: zhongwh 746227367@qq.com
+ * @LastEditTime: 2026-05-17 14:54:54
  * @Description: 文章接口实现
  */
 package repository
@@ -24,8 +24,8 @@ import (
 )
 
 type IBlogRepository interface {
-	GetBlogs(req *vo.GetBlogListRequest) ([]model.Blog, int64, error)                       // 获取文章列表
-	GetBlogById(blogId string) (model.Blog, error)                                          // 根据ID获取文章详情
+	GetBlogs(req *vo.GetBlogListRequest) ([]model.Blog, int64, error)                      // 获取文章列表
+	GetBlogById(blogId string) (model.Blog, error)                                         // 根据ID获取文章详情
 	CreateBlog(blog *model.Blog) error                                                     // 创建文章
 	UpdateBlogPublishStatusById(blogId string, status uint, publishedAt *time.Time) error  // 更新文章状态
 	UpdateBlogById(blogId string, blog *model.Blog) error                                  // 更新文章
