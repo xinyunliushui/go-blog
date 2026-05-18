@@ -10,7 +10,7 @@
 项目目录结构参照[标准Go项目布局](https://github.com/golang-standards/project-layout/blob/master/README_zh.md)
 ```text
 go-blog/
-├── main.go                          # 入口：配置加载、组件初始化、HTTP 服务、MQ 消费与 Outbox 重试协程
+├── main.go                          # 入口
 ├── go.mod
 ├── go.sum
 ├── README.md
@@ -23,7 +23,7 @@ go-blog/
     ├── routes/                      # 路由总入口与各模块路由
     ├── middleware/                  # gin相关中间件JWT、CORS、限流
     ├── controller/                  # 控制层；处理HTTP请求
-    ├── service/                     # 业务逻辑层；RabbitMQ 消费、Blog_MQ_Outbox定时重试
+    ├── service/                     # 业务逻辑层；RabbitMQ 消费、Blog MQ Compensation 定时重试
     ├── repository/                  # 数据访问层，负责与数据源交互
     ├── model/                       # GORM模型层
     ├── dto/                         # 数据传输对象；用于定义接口响应结构
@@ -44,6 +44,7 @@ go-blog/
 ```
 - `RabbitMQ` 需要前置创建vhost，名称是go_blog，并给用户授权
 ```shell
+# 本地docker示例
 # 创建vhost go_blog
 rabbitmqctl add_vhost go_blog
 # 查看vhost go_blog的用户列表
@@ -53,14 +54,13 @@ rabbitmqctl set_permissions -p go_blog admin "." "." ".*"
 ```
 - `Elasticsearch` 需要前置安装好ik_max_word中文分词器，优化博客文章存储
 ```shell
+# 本地docker示例
 # 安装对应版本的分词器
 ./bin/elasticsearch-plugin install https://release.infinilabs.com/analysis-ik/stable/elasticsearch-analysis-ik-<版本号>.zip
 # 查看配置的插件
 ./bin/elasticsearch-plugin list
 ```
-
 - `ClickHouse` 需要前置创建database，名称是go_blog
-
 - 本地开发
 ```shell
 # 安装依赖
@@ -69,62 +69,49 @@ go mod tidy
 go run .\main.go
 ```
 
+## Gin 中间件
+- `AuthMiddleware` — 登录、登出与 JWT 校验
+- `RateLimitMiddleware` — 令牌桶限流
+- `CORSMiddleware` — 跨域请求处理
+
+
+## 方案简要说明
+- 密码传输采用 RSA 非对称加密，入库使用 BCrypt 不可逆哈希。
+- 日志使用 Zap 记录，配合 Lumberjack 做按大小/时间的文件切割。
+- API 通过路径前缀 `/v1` 做版本隔离。
+- 提供存活探针与就绪探针；MySQL、MQ、ES、CH 等依赖初始化失败不阻塞进程启动，由就绪探针反映不可用状态。
+- 主键统一为 UUID 字符串，在 GORM `BeforeCreate` 钩子中生成。
+- 监听退出信号，按 HTTP → 补偿重试 → MQ 消费顺序优雅停机并释放连接。
+- MQ 推送或消费失败时写入 `blog_mq_compensation` 补偿表，后台定时重试（PUBLISH 补发 MQ，CONSUME 补写 ES/CH）。
+
+## 特殊说明
+### MQ 推送 / 消费失败补偿
+
+博客创建后异步投递 RabbitMQ，消费端将文章同步至 ES 与 ClickHouse。任一环节失败不阻塞主流程，依赖本地表 `blog_mq_compensation` 做最终一致性补偿。
+
+**PUBLISH**场景
+- 创建文章后 `PublishMessage` 失败 | 定时任务重新向 MQ 发布消息
+
+**CONSUME**场景
+- 消费后同步 ES/CH 失败 | 定时任务按 `pending_mask` 补写（先对账，跳过已存在的数据）
+
+**写入规则**
+
+- 同 `blog_id` + `task_type` 且`status`为「待处理」时更新写入，避免重复任务；CONSUME 的 `pending_mask`（ES=1、CH=2）做ES、CH数据一致性判断。
+- CONSUME 失败且补偿落库成功则 Ack 消息；落库失败则 Nack 丢弃，需关注 `[MQ_CONSUME_ALERT]` 日志。
+
+**后台重试**（`RunBlogMQCompensationRetry`）
+
+- 每 30 秒扫描一批（最多 10 条），最多重试 5 次。
+- 成功 → `status=1`；超限 → `status=2`（已放弃），日志关键字 `[MQ_PUBLISH_DEAD]` / `[MQ_CONSUME_DEAD]`，需人工补投 MQ 或核对 ES/CH。
 
 
 ## 相关三方依赖
-- [`Gin`](https://github.com/gin-gonic/gin) 一个类似于martini但拥有更好性能的API框架, 由于使用了httprouter, 速度提高了近40倍
-- `MySQL` 采用的是MySql数据库
-- [`gin-jwt`](https://github.com/appleboy/gin-jwt) 使用JWT轻量级认证, 并提供活跃用户Token刷新功能
-- [`Gorm`](https://github.com/go-gorm/gorm) 采用Gorm 2.0版本开发, 包含一对多、多对多、事务等操作
-- [`Validator`](https://github.com/go-playground/validator) 使用validator v10做参数校验, 严密校验前端传入参数
-- [`Lumberjack`](https://github.com/natefinch/lumberjack) 设置日志文件大小、保存数量、保存时间和压缩等
-- [`Viper`](https://github.com/spf13/viper) Go应用程序的完整配置解决方案, 支持配置热更新
-- [`GoFunk`](https://github.com/thoas/go-funk) 包含大量的Slice操作方法的工具包，[使用文档](https://pkg.go.dev/github.com/thoas/go-funk#pkg-index)
-
-## gin中间件
-- `AuthMiddleware` 权限认证中间件 -- 处理登录、登出、无状态token校验
-- `RateLimitMiddleware` 基于令牌桶的限流中间件 -- 限制用户的请求次数
-- `CORSMiddleware` -- 跨域中间件 -- 解决跨域问题
-
-
-## 其他说明
-- 密码的传输使用非对称加密、入库使用不可逆加密。
-- 日志管理使用Zap配合Lumberjack（由于zap不具备日志切割功能, 使用lumberjack配合）。
-- API进行了简单的版本管理，增加了路径v1进行隔离。
-- 服务有存活/就绪探针，保障服务的稳定性。其中依赖的相关数据库资初始化失败时不会导致主程序启动失败，但在就绪探针中会有体现。
-- GORM中将默认的ID替换为UUID，使用使用字符串类型 + BeforeCreate钩子方案。
-- 主程序会监听退出信号，实现优雅关闭和释放相关资源。
-
-## TODO
-- MQ消费失败后目前直接丢弃了，需要考虑补偿方案
-- ES和CH入库非原子操作，需要两边数据一致性问题
-- 项目的log数据可以尝试接入ES，实现项目的日志的分析
-- 博客的运营数据写入CH，让管理后台具有数据洞察能力
-
-
-## MQ发送失败时落库并定时重试，实现说明（使用AI实现）:
-`controller` 写博客成功后调用 `rabbitmq` 发布消息；`ConsumeRabbitMQ` 消费后通过 `repository` 写入 ES 与 ClickHouse；若发布失败则由 `repository` 写入 Outbox 表，`RunBlogMQOutboxRetry` 定时读表并补发
-
-#### 表模型 internal/model/blog_mq_outbox_model.go
-- 表名：blog_mq_outbox
-- 字段：blog_id、完整 Blog JSON（payload）、status（0 待投递 / 1 成功 / 2 放弃）、retry_count、last_error
-
-#### 仓储 internal/repository/mq_outbox_repository.go
-- EnqueueBlogPublish：MQ 首次失败后写入一行待投递记录
-- ListPendingForRetry：拉取 status=待投递 的记录
-- MarkSent / MarkRetry：成功改「已发送」，失败递增重试次数，超过上限改「已放弃」
-
-#### 后台重试 internal/service/blog_mq_outbox_retry_service.go
-- 每 30s 扫一批（最多 50 条），反序列化 payload 后再次 PublishMessage
-- 单条最多 15 次失败后标记 DEAD，并打 [MQ_OUTBOX_DEAD_LETTER] 日志便于告警规则抓取
-- 任意异常统一带 [MQ_OUTBOX_ALERT]，便于监控检索
-- 常量：blogOutboxRetryInterval、blogOutboxMaxRetries、blogOutboxBatchSize（可按需改成配置项）。
-
-#### 创建博客 internal/controller/blog_controller.go
-- MySQL Create 成功后照常 PublishMessage
-- 失败：打 [MQ_OUTBOX_ALERT] → 写入补偿表 → 返回成功文案「…将自动重试」并带上 blogId
-- 补偿表写入也失败：返回业务失败，提示人工介入（避免误以为已排队）
-
-#### 进程生命周期 main.go
-- 启动独立 goroutine：RunBlogMQOutboxRetry
-- 优雅退出：先 stopOutbox 并 Wait，再停 MQ 消费者并 CloseRabbitMQ，避免关闭连接后仍在 Publish。
+- [`Gin`](https://github.com/gin-gonic/gin) — HTTP API 框架
+- `MySQL` — 业务主库（用户、角色、资源、博客等）
+- [`gin-jwt`](https://github.com/appleboy/gin-jwt) — JWT 登录认证与 Token 刷新
+- [`Gorm`](https://github.com/go-gorm/gorm) — ORM，支持关联、事务与表迁移
+- [`Validator`](https://github.com/go-playground/validator) — 请求入参校验（v10）
+- [`Lumberjack`](https://github.com/natefinch/lumberjack) — 日志文件轮转（大小、份数、保留期、压缩）
+- [`Viper`](https://github.com/spf13/viper) — 配置加载与管理
+- [`GoFunk`](https://github.com/thoas/go-funk) — Slice 等集合工具函数，[文档](https://pkg.go.dev/github.com/thoas/go-funk#pkg-index)

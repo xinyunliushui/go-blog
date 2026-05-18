@@ -73,14 +73,13 @@ func main() {
 		service.ConsumeRabbitMQ(consumerCtx, service.HandleArticleMessage)
 	}()
 
-	// Blog 创建后 MQ 投递失败的本地补偿重试（先于关闭 MQ 连接停止）
-	outboxCtx, stopOutbox := context.WithCancel(context.Background())
-	var outboxWg sync.WaitGroup
-	outboxWg.Add(1)
+	// 博客 MQ 补偿重试（PUBLISH 补 MQ / CONSUME 补 ES+CH，先于关闭 MQ 连接停止）
+	compensationCtx, stopCompensation := context.WithCancel(context.Background())
+	var compensationWg sync.WaitGroup
+	compensationWg.Add(1)
 	go func() {
-		defer outboxWg.Done()
-		// 博客MQ投递失败时落库并定时重试
-		service.RunBlogMQOutboxRetry(outboxCtx)
+		defer compensationWg.Done()
+		service.RunBlogMQCompensationRetry(compensationCtx)
 	}()
 
 	// 初始化路由服务
@@ -123,9 +122,9 @@ func main() {
 		common.Log.Errorf("HTTP 服务关闭出错: %v", err)
 	}
 
-	// 2. 停止 Outbox 重试（不再向 MQ Publish），再停消费者
-	stopOutbox()
-	outboxWg.Wait()
+	// 2. 停止 MQ 补偿重试（不再 Publish / 直写 ES+CH），再停消费者
+	stopCompensation()
+	compensationWg.Wait()
 
 	// 3. 停止 RabbitMQ 消费循环，再断连接
 	stopConsumer()

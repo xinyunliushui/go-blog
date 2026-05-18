@@ -87,7 +87,7 @@ func dbAutoMigrate() {
 		&model.Role{},
 		&model.Menu{},
 		&model.Blog{},
-		&model.BlogMQOutbox{},
+		&model.BlogMQCompensation{},
 	)
 }
 

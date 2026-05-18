@@ -48,7 +48,7 @@ rabbitmq:
   # 限制每次推送的消息数，防止消费者过载
   prefetch-count: 10
   # 自动确认消息 生产环境强烈建议设为 false,手动去确认消息成功
-  auto-ack: true
+  auto-ack: false
 
 # elasticsearch配置
 elastic-search:

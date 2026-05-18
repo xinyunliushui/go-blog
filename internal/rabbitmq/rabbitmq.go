@@ -87,6 +87,7 @@ func PublishMessage(queueName string, message interface{}) error {
 		common.Log.Errorf("序列化消息失败: %s", err)
 		return err
 	}
+	// 设置消息持久化
 	deliveryMode := amqp.Transient
 	if config.Conf.Rabbitmq.Durable {
 		deliveryMode = amqp.Persistent
