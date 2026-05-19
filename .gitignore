@@ -3,3 +3,6 @@
 
 # 忽略调试文件
 __debug_bin*
+
+# 忽略可执行文件
+go-blog.exe

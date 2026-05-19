@@ -8,20 +8,20 @@ import (
 )
 
 const (
-	TaskTypePublish = "PUBLISH"
-	TaskTypeConsume = "CONSUME"
+	TaskTypePublish = "PUBLISH" // 发布任务类型，创建后补发 MQ
+	TaskTypeConsume = "CONSUME" // 消费任务类型，消费后补写 ES/CH
 )
 
 const (
-	SyncPendingES  uint8                           = 1 << iota // 0
-	SyncPendingCH                                              // 1
-	SyncPendingAll = SyncPendingES | SyncPendingCH             // 按位或，表示 ES 和 CH 都待同步
+	SyncPendingES  uint8                           = 1 << iota // 1
+	SyncPendingCH                                              // 2
+	SyncPendingAll = SyncPendingES | SyncPendingCH             // 3 按位或，表示 ES 和 CH 都待同步
 )
 
 const (
-	SyncLabelES  = "ES"
-	SyncLabelCH  = "CH"
-	SyncLabelAll = "ALL"
+	SyncLabelES  = "ES" // Elasticsearch
+	SyncLabelCH  = "CH" // ClickHouse
+	SyncLabelAll = "ALL" // Elasticsearch 和 ClickHouse 都待同步
 )
 
 type BlogMQCompensation struct {

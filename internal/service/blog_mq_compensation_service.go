@@ -58,7 +58,8 @@ func processBlogCompensationBatch(repo repository.IMQCompensationRepository) {
 		common.Log.Errorf("[MQ补偿] 查询待重试记录失败: %v", err)
 		return
 	}
-	for _, row := range rows {
+	for i := range rows {
+		row := &rows[i]
 		taskType := row.TaskType
 		// 如果任务类型为空，则默认为发布任务类型
 		if taskType == "" {
@@ -78,9 +79,9 @@ func processBlogCompensationBatch(repo repository.IMQCompensationRepository) {
 /***
  * @description: 处理发布补偿
  * @param repo repository.IMQCompensationRepository 补偿仓库
- * @param row model.BlogMQCompensation 补偿记录
+ * @param row *model.BlogMQCompensation 补偿记录
  */
-func processPublishCompensation(repo repository.IMQCompensationRepository, row model.BlogMQCompensation) {
+func processPublishCompensation(repo repository.IMQCompensationRepository, row *model.BlogMQCompensation) {
 	var blog model.Blog
 	if err := json.Unmarshal(row.Payload, &blog); err != nil {
 		handleCompensationRetry(repo, row, 0, err, "[MQ补偿-推送]")
@@ -88,6 +89,7 @@ func processPublishCompensation(repo repository.IMQCompensationRepository, row m
 	}
 
 	queue := config.Conf.Rabbitmq.QueueName
+	// 重新投递 MQ
 	if err := rabbitmq.PublishMessage(queue, &blog); err != nil {
 		common.Log.Errorf("[MQ补偿-推送] id=%s blog_id=%s 第%d次重试仍失败: %v",
 			row.ID, row.BlogID, row.RetryCount+1, err)
@@ -105,9 +107,9 @@ func processPublishCompensation(repo repository.IMQCompensationRepository, row m
 /**
  * @description: 处理消费补偿
  * @param repo repository.IMQCompensationRepository 补偿仓库
- * @param row model.BlogMQCompensation 补偿记录
+ * @param row *model.BlogMQCompensation 补偿记录
  */
-func processConsumeCompensation(repo repository.IMQCompensationRepository, row model.BlogMQCompensation) {
+func processConsumeCompensation(repo repository.IMQCompensationRepository, row *model.BlogMQCompensation) {
 	var blog model.Blog
 	if err := json.Unmarshal(row.Payload, &blog); err != nil {
 		handleCompensationRetry(repo, row, row.EffectivePendingMask(), err, "[MQ补偿-消费]")
@@ -140,14 +142,14 @@ func processConsumeCompensation(repo repository.IMQCompensationRepository, row m
 }
 
 /**
- * @description: 处理补偿重试
+ * @description: 补偿相关状态位变更
  * @param repo repository.IMQCompensationRepository 补偿仓库
- * @param row model.BlogMQCompensation 补偿记录
+ * @param row *model.BlogMQCompensation 补偿记录
  * @param pendingMask uint8 待同步位图
  * @param cause error 错误
  * @param logPrefix string 日志前缀
  */
-func handleCompensationRetry(repo repository.IMQCompensationRepository, row model.BlogMQCompensation, pendingMask uint8, cause error, logPrefix string) {
+func handleCompensationRetry(repo repository.IMQCompensationRepository, row *model.BlogMQCompensation, pendingMask uint8, cause error, logPrefix string) {
 	next := row.RetryCount + 1
 	dead := next >= blogCompensationMaxRetries
 	errMsg := cause.Error()

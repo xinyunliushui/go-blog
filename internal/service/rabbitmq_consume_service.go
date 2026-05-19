@@ -52,10 +52,11 @@ func ConsumeRabbitMQ(ctx context.Context, handler func([]byte) error) {
 						common.Log.Errorf("[消息消费] Ack 失败: %v", ackErr)
 					}
 				} else {
-					common.Log.Errorf("[消息消费] 处理失败且补偿落库失败，Nack 丢弃: %v", err)
-					// func (d Delivery) Nack(multiple bool, requeue bool) error
-					// 不重投, 丢弃 (MQ可配置死信队列来处理)
-					_ = d.Nack(false, false)
+					common.Log.Errorf("[消息消费] 处理失败且补偿落库失败，转入死信队列: %v", err)
+					// Nack(requeue=false)：由 go_blog_queue 的 x-dead-letter-* 路由至 go_blog_dlq
+					if nackErr := d.Nack(false, false); nackErr != nil {
+						common.Log.Errorf("[消息消费] Nack 失败: %v", nackErr)
+					}
 				}
 				continue
 			}

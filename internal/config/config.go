@@ -140,6 +140,14 @@ type RabbitmqConfig struct {
 	PrefetchCount int `mapstructure:"prefetch-count" yaml:"prefetch-count"`
 	// 自动确认消息 生产环境强烈建议设为 false,手动去确认消息成功
 	AutoAck bool `mapstructure:"auto-ack" yaml:"auto-ack"`
+	// 死信交换机（消费失败且补偿落库失败时，Nack 后由 Broker 路由至此）
+	DLXExchange string `mapstructure:"dlx-exchange" yaml:"dlx-exchange"`
+	// 死信队列
+	DLQName string `mapstructure:"dlq-name" yaml:"dlq-name"`
+	// 死信路由键（绑定 DLQ 与 DLX）
+	DeadLetterRoutingKey string `mapstructure:"dead-letter-routing-key" yaml:"dead-letter-routing-key"`
+	// 死信队列消息 TTL（毫秒），0 表示不限制
+	DLQMessageTTLMs int `mapstructure:"dlq-message-ttl-ms" yaml:"dlq-message-ttl-ms"`
 }
 
 // elasticSearch配置

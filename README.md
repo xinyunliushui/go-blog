@@ -81,29 +81,32 @@ go run .\main.go
 - API 通过路径前缀 `/v1` 做版本隔离。
 - 提供存活探针与就绪探针；MySQL、MQ、ES、CH 等依赖初始化失败不阻塞进程启动，由就绪探针反映不可用状态。
 - 主键统一为 UUID 字符串，在 GORM `BeforeCreate` 钩子中生成。
-- 监听退出信号，按 HTTP → 补偿重试 → MQ 消费顺序优雅停机并释放连接。
+- 监听退出信号，按 HTTP → 补偿重试 → MQ 主消费 / DLQ 消费顺序优雅停机并释放连接。
 - MQ 推送或消费失败时写入 `blog_mq_compensation` 补偿表，后台定时重试（PUBLISH 补发 MQ，CONSUME 补写 ES/CH）。
+- 消费失败且补偿落库失败时，消息经 Broker 死信交换机进入 `go_blog_dlq`，由 DLQ 消费者再次尝试落补偿表。
 
 ## 特殊说明
 ### MQ 推送 / 消费失败补偿
 
-博客创建后异步投递 RabbitMQ，消费端将文章同步至 ES 与 ClickHouse。任一环节失败不阻塞主流程，依赖本地表 `blog_mq_compensation` 做最终一致性补偿。
+博客创建后异步投递 RabbitMQ（`go_blog_exchange` → `go_blog_queue`），消费端将文章同步至 ES 与 ClickHouse。任一环节失败不阻塞主流程，依赖本地表 `blog_mq_compensation` 做最终一致性补偿；补偿落库也失败时由死信队列兜底。
 
 **PUBLISH**场景
 - 创建文章后 `PublishMessage` 失败 | 定时任务重新向 MQ 发布消息
 
 **CONSUME**场景
-- 消费后同步 ES/CH 失败 | 定时任务按 `pending_mask` 补写（先对账，跳过已存在的数据）
+- 消费后同步 ES/CH 失败 | 写 CONSUME 补偿并 Ack，由定时任务按 `pending_mask` 补写
+- 消费失败且补偿落库失败 | Nack 转入 `go_blog_dlq`，DLQ 消费者再次写补偿表
 
 **写入规则**
 
-- 同 `blog_id` + `task_type` 且`status`为「待处理」时更新写入，避免重复任务；CONSUME 的 `pending_mask`（ES=1、CH=2）做ES、CH数据一致性判断。
-- CONSUME 失败且补偿落库成功则 Ack 消息；落库失败则 Nack 丢弃，需关注 `[MQ_CONSUME_ALERT]` 日志。
+- 同 `blog_id` + `task_type` 且`status`为「待处理」时更新写入，避免重复任务；CONSUME 的 `pending_mask`（ES=1、CH=2）做 ES、CH 数据一致性判断。
+- CONSUME 失败且补偿落库成功 → Ack；落库失败 → Nack 进死信队列（非丢弃）。
 
 **后台重试**（`RunBlogMQCompensationRetry`）
 
 - 每 30 秒扫描一批（最多 10 条），最多重试 5 次。
 - 成功 → `status=1`；超限 → `status=2`（已放弃），日志关键字 `[MQ_PUBLISH_DEAD]` / `[MQ_CONSUME_DEAD]`，需人工补投 MQ 或核对 ES/CH。
+- DLQ 再次落补偿仍失败 → `[MQ_DLQ_DEAD]`，需人工核对 ES/CH。
 
 
 ## 相关三方依赖
@@ -115,3 +118,6 @@ go run .\main.go
 - [`Lumberjack`](https://github.com/natefinch/lumberjack) — 日志文件轮转（大小、份数、保留期、压缩）
 - [`Viper`](https://github.com/spf13/viper) — 配置加载与管理
 - [`GoFunk`](https://github.com/thoas/go-funk) — Slice 等集合工具函数，[文档](https://pkg.go.dev/github.com/thoas/go-funk#pkg-index)
+- [`streadway/amqp`](https://github.com/streadway/amqp) — RabbitMQ AMQP 客户端，连接管理、队列声明、消息发布与消费
+- [`go-elasticsearch`](https://github.com/elastic/go-elasticsearch) — Elasticsearch 官方 Go 客户端（v8），博客索引、全文搜索与 ES 对账
+- [`Gorm ClickHouse Driver`](https://github.com/go-gorm/clickhouse) — ClickHouse 的 GORM 驱动（底层 [`clickhouse-go/v2`](https://github.com/ClickHouse/clickhouse-go)），博客异步同步与 OLAP 存储

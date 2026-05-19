@@ -68,40 +68,30 @@ func ReconcileAndSyncBlog(blog *model.Blog, pendingMask uint8) error {
 		common.Log.Infof("[同步对账] blog_id=%s ES/CH 均已存在，跳过写入", blog.ID)
 		return nil
 	}
-	// 同步博客
-	remaining, err := syncBlogWithPendingMask(blog, stillPending)
-	if err != nil {
-		if syncErr, ok := err.(*BlogSyncConsistentError); ok {
-			syncErr.PendingMask = remaining
-		}
-		return err
-	}
-	return nil
+	// 同步写入 ES/CH（错误内已携带剩余待同步位图）
+	return syncBlogWithPendingMask(blog, stillPending)
 }
 
 /**
  * @description: 同步博客
  * @param blog *model.Blog 博客
  * @param mask uint8 位图
- * @return remaining uint8 剩余位图
- * @return err error 错误
+ * @return error 错误（*BlogSyncConsistentError.PendingMask 为剩余待同步位）
  */
-func syncBlogWithPendingMask(blog *model.Blog, mask uint8) (remaining uint8, err error) {
-	remaining = mask
+func syncBlogWithPendingMask(blog *model.Blog, mask uint8) error {
+	remaining := mask
 	if model.NeedsSyncES(remaining) {
 		if err := repository.IndexBlogToES(blog); err != nil {
-			return remaining, newSyncError(blog, remaining, err)
+			return newSyncError(blog, remaining, err)
 		}
 		remaining = model.MarkESSynced(remaining)
 	}
 	if model.NeedsSyncCH(remaining) {
 		if err := repository.UpsertBlogToClickHouse(blog); err != nil {
-			return model.SyncPendingCH, newSyncError(blog, model.SyncPendingCH, err)
+			return newSyncError(blog, remaining, err)
 		}
-		remaining = model.MarkCHSynced(remaining)
 	}
-
-	return 0, nil
+	return nil
 }
 
 /**

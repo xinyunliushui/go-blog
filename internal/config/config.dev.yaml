@@ -37,6 +37,14 @@ rabbitmq:
   exchange-name: go_blog_exchange
   # 路由键
   routing-key: go_blog_routing-key
+  # 死信交换机
+  dlx-exchange: go_blog_dlx_exchange
+  # 死信队列
+  dlq-name: go_blog_dlq_queue
+  # 死信路由键
+  dead-letter-routing-key: go_blog_dead_letter_routing_key
+  # 死信队列消息 TTL（毫秒），7 天；0 表示不限制
+  dlq-message-ttl-ms: 604800000
   # 交换机类型
   exchange-type: direct
   # 队列持久化

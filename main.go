@@ -69,8 +69,16 @@ func main() {
 	consumerWg.Add(1)
 	go func() {
 		defer consumerWg.Done()
-		// 取消context之前，会阻塞在内部for循环的select语句中，直到收到取消信号
 		service.ConsumeRabbitMQ(consumerCtx, service.HandleArticleMessage)
+	}()
+
+	// 启动死信队列消费者
+	dlqCtx, stopDLQ := context.WithCancel(context.Background())
+	var dlqWg sync.WaitGroup
+	dlqWg.Add(1)
+	go func() {
+		defer dlqWg.Done()
+		service.ConsumeRabbitMQDLQ(dlqCtx)
 	}()
 
 	// 博客 MQ 补偿重试（PUBLISH 补 MQ / CONSUME 补 ES+CH，先于关闭 MQ 连接停止）
@@ -126,10 +134,14 @@ func main() {
 	stopCompensation()
 	compensationWg.Wait()
 
-	// 3. 停止 RabbitMQ 消费循环，再断连接
+	// 3. 停止 RabbitMQ
+	// 停止主消费与 DLQ 消费
 	stopConsumer()
-	// 使用waitGroup等待消费协程完成，避免消费协程仍对已关闭 channel 进行 Ack/Nack
 	consumerWg.Wait()
+	// 停止死信队列消费者
+	stopDLQ()
+	dlqWg.Wait()
+	// 关闭 RabbitMQ 连接
 	rabbitmq.CloseRabbitMQ()
 	common.Log.Info("RabbitMQ 连接已关闭")
 
