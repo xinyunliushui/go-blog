@@ -111,12 +111,12 @@ func (bc *BlogController) CreateBlog(ctx *gin.Context) {
 		return
 	}
 
-	if err := rabbitmq.PublishMessage(config.Conf.Rabbitmq.QueueName, &blog); err != nil {
-		common.Log.Errorf("[消息推送补偿] blog_id=%s RabbitMQ 首次投递失败，写入本地补偿表: %v", blog.ID, err)
+	if err := rabbitmq.PublishMessage(ctx.Request.Context(), config.Conf.Rabbitmq.QueueName, &blog); err != nil {
+		common.LoggerFromGin(ctx).Errorf("[消息推送补偿] blog_id=%s RabbitMQ 首次投递失败，写入本地补偿表: %v", blog.ID, err)
 		compRepo := repository.NewMQCompensationRepository()
 		// 写入本地补偿表
-		if encErr := compRepo.EnqueueBlogPublish(&blog, err.Error()); encErr != nil {
-			common.Log.Errorf("[消息推送补偿] blog_id=%s 补偿表写入失败（需人工核对 MySQL 与 ES/CH）: %v", blog.ID, encErr)
+		if encErr := compRepo.EnqueueBlogPublish(&blog, err.Error(), common.TraceIDFromGin(ctx)); encErr != nil {
+			common.LoggerFromGin(ctx).Errorf("[消息推送补偿] blog_id=%s 补偿表写入失败（需人工核对 MySQL 与 ES/CH）: %v", blog.ID, encErr)
 			response.Fail(ctx, gin.H{"blogId": blog.ID}, "文章已保存，但消息队列不可用且补偿记录失败，请联系管理员")
 			return
 		}

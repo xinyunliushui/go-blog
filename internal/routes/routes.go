@@ -18,6 +18,8 @@ import (
 func InitRoutes() *gin.Engine {
 
 	router := gin.Default()
+	// 全链路 traceId（需在业务中间件之前，保证限流/鉴权失败也有 traceId）
+	router.Use(middleware.TraceMiddleware())
 	// 启用全局跨域中间件（需在创建路由分组前挂载）
 	router.Use(middleware.CORSMiddleware())
 

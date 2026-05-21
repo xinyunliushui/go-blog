@@ -24,7 +24,11 @@ import (
  * @return void
  */
 func Response(c *gin.Context, httpStatus int, code int, data interface{}, message string) {
-	c.JSON(httpStatus, gin.H{"code": code, "data": data, "message": message})
+	body := gin.H{"code": code, "data": data, "message": message}
+	if traceID := common.TraceIDFromGin(c); traceID != "" {
+		body["traceId"] = traceID
+	}
+	c.JSON(httpStatus, body)
 }
 
 /** 返回前端-成功
@@ -68,12 +72,13 @@ func FailErr(c *gin.Context, data interface{}, message string, err error) {
  * @return void
  */
 func logAPIFail(c *gin.Context, message string, err error) {
-	if common.Log == nil {
+	logger := common.LoggerFromGin(c)
+	if logger == nil {
 		return
 	}
 	path := c.FullPath()
 	if path == "" {
 		path = c.Request.URL.Path
 	}
-	common.Log.Errorf("[%s] %s - %s: %v", c.Request.Method, path, message, err)
+	logger.Errorf("[%s] %s - %s: %v", c.Request.Method, path, message, err)
 }

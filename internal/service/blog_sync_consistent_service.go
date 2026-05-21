@@ -100,25 +100,25 @@ func syncBlogWithPendingMask(blog *model.Blog, mask uint8) error {
  * @param syncErr *BlogSyncConsistentError 补偿错误
  * @return error 错误
  */
-func enqueueBlogConsumeCompensation(repo repository.IMQCompensationRepository, syncErr *BlogSyncConsistentError) error {
+func enqueueBlogConsumeCompensation(repo repository.IMQCompensationRepository, traceID string, syncErr *BlogSyncConsistentError) error {
 	if syncErr == nil {
 		return errors.New("syncErr 为空")
 	}
-	// 获取补偿位图
+	traceID = common.ResolveTraceIDForCompensation(traceID)
 	mask := syncErr.PendingMask
 	if mask == 0 {
 		mask = model.SyncPendingAll
 	}
 	errMsg := syncErr.Error()
 	if syncErr.Blog != nil && syncErr.Blog.ID != "" {
-		return repo.EnqueueBlogConsume(syncErr.Blog, mask, errMsg)
+		return repo.EnqueueBlogConsume(syncErr.Blog, mask, errMsg, traceID)
 	}
 	if len(syncErr.Body) > 0 {
 		var blog model.Blog
 		if json.Unmarshal(syncErr.Body, &blog) == nil && blog.ID != "" {
-			return repo.EnqueueBlogConsume(&blog, mask, errMsg)
+			return repo.EnqueueBlogConsume(&blog, mask, errMsg, traceID)
 		}
-		return repo.EnqueueBlogConsumePayload("", syncErr.Body, mask, errMsg)
+		return repo.EnqueueBlogConsumePayload("", syncErr.Body, mask, errMsg, traceID)
 	}
 	return errors.New("无法构造 CONSUME 补偿任务：缺少 blog 与 payload")
 }

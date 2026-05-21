@@ -2,7 +2,7 @@
  * @Date: 2026-03-23 23:08:26
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-15 11:32:37
+ * @LastEditTime: 2026-05-21 23:36:43
  * @Description: database
  */
 package common
@@ -26,6 +26,17 @@ var DB *gorm.DB
  * @return error 失败时 DB 保持 nil，由调用方记录日志；就绪探针可反映未就绪
  */
 func InitMysql() error {
+	if err := initMysqlConnection(); err != nil {
+		return err
+	}
+	// 开发环境：GORM AutoMigrate 补齐表结构（生产/测试库结构变更请用 goose CLI 手动迁移）
+	if env := utils.GetEnv("APP_ENV", "dev"); env == "dev" {
+		dbAutoMigrate()
+	}
+	return nil
+}
+
+func initMysqlConnection() error {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&collation=%s&%s",
 		config.Conf.Mysql.Username,
 		config.Conf.Mysql.Password,
@@ -39,21 +50,18 @@ func InitMysql() error {
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
-		// NamingStrategy: schema.NamingStrategy{
-		// 	TablePrefix: config.Conf.Mysql.TablePrefix + "_",
-		// },
 	})
 	if err != nil {
-		Log.Errorf("初始化 mysql 数据库失败: %v", err)
+		if Log != nil {
+			Log.Errorf("初始化 mysql 数据库失败: %v", err)
+		}
 		return err
 	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		Log.Errorf("获取底层 sql.DB 失败: %v", err)
 		return err
 	}
-
 	// 设置了数据库连接的最大存活时间为 30 分钟
 	sqlDB.SetConnMaxLifetime(30 * time.Minute)
 	// 设置了空闲连接的最大存活时间为 10 分钟
@@ -67,13 +75,7 @@ func InitMysql() error {
 	if config.Conf.Mysql.LogMode {
 		db.Debug()
 	}
-
 	DB = db
-
-	// 迁移表结构
-	if env := utils.GetEnv("APP_ENV", "dev"); env == "dev" {
-		dbAutoMigrate()
-	}
 	return nil
 }
 

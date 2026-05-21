@@ -17,11 +17,12 @@ go-blog/
 ├── .gitignore
 ├── public_key.pem                   # RSA 公钥
 ├── private_key.pem                  # RSA 私钥
+├── migrations/                      # MySQL 结构变更脚本（goose）
 └── internal/
-    ├── config/                      # 项目相关配置
-    ├── common/                      # 公共处理：MySQL 初始化与迁移、日志、校验器、默认管理员
+    ├── config/                      # 配置加载；config.yml 与 dev/test/prod 环境覆盖
+    ├── common/                      # 公共处理：MySQL 初始化、traceId、日志、校验器
     ├── routes/                      # 路由总入口与各模块路由
-    ├── middleware/                  # gin相关中间件JWT、CORS、限流
+    ├── middleware/                  # gin相关中间件JWT、CORS、限流、Trace
     ├── controller/                  # 控制层；处理HTTP请求
     ├── service/                     # 业务逻辑层；RabbitMQ 消费、Blog MQ Compensation 定时重试
     ├── repository/                  # 数据访问层，负责与数据源交互
@@ -34,7 +35,6 @@ go-blog/
     ├── clickhouse/                  # ClickHouse 连接与迁移
     ├── utils/                       # 工具函数；RSA、BCrypt、JSON、环境变量、ES 高亮等
 ```
-
 
 ## 启动前依赖准备
 以下环境以及预设好对应的`database`，用户名和密码记得更换
@@ -63,10 +63,27 @@ rabbitmqctl set_permissions -p go_blog admin "." "." ".*"
 - `ClickHouse` 需要前置创建database，名称是go_blog
 - 本地开发
 ```shell
-# 安装依赖
+# 1、安装依赖
 go mod tidy
-# 本地启动
+# 2、Goose管理迁移，参照下方说明
+# 3、本地启动
 go run .\main.go
+```
+
+## Goose（MySQL 迁移）
+- 迁移脚本目录：`migrations/`，文件命名 `YYYYMMDDxxxx_描述.sql`，使用 `-- +goose Up` / `-- +goose Down` 分段。
+- **开发环境**（`APP_ENV=dev`，默认）：启动时由 GORM `AutoMigrate` 按模型补齐表结构，便于本地迭代。
+- **测试 / 生产环境**：进程启动不执行 goose；发版或部署前需用 goose CLI 手动执行 `migrations/` 脚本。
+``` shell
+# 安装 goose CLI
+go install github.com/pressly/goose/v3/cmd/goose@latest
+
+# 在项目根目录执行（DSN 与 config 中 mysql 一致，按实际替换）
+goose -dir migrations mysql "user:password@tcp(host:3306)/go_blog?charset=utf8mb4&parseTime=True&loc=Local" up
+
+# 查看迁移状态 / 回滚上一版
+goose -dir migrations mysql "<dsn>" status
+goose -dir migrations mysql "<dsn>" down
 ```
 
 ## Gin 中间件

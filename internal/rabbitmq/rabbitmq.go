@@ -8,6 +8,7 @@
 package rabbitmq
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -228,12 +229,13 @@ func isPreconditionFailed(err error) bool {
  * @param {interface{}} message 消息
  * @return {error}
  */
-func PublishMessage(queueName string, message interface{}) error {
+func PublishMessage(ctx context.Context, queueName string, message interface{}) error {
 	_ = queueName
 	if err := ensureConnected(); err != nil {
 		common.Log.Errorf("初始化RabbitMQ连接失败: %s", err)
 		return err
 	}
+	traceID := common.TraceIDForPublish(ctx)
 	// 序列化消息
 	body, err := json.Marshal(message)
 	if err != nil {
@@ -262,6 +264,9 @@ func PublishMessage(queueName string, message interface{}) error {
 			ContentType:  "application/json",
 			Body:         body,
 			DeliveryMode: deliveryMode, // 与队列 durable 策略一致
+			Headers: amqp.Table{
+				common.MQHeaderTraceID: traceID,
+			},
 		},
 	)
 	return err

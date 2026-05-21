@@ -22,10 +22,10 @@ const dlqConsumerTag = "go-blog-dlq-consumer"
 
 var errDLQPendingCompensation = errors.New("主消费失败且补偿落库失败，消息已由死信队列承接")
 
- /**
-  * @description: 消费死信队列消息
-  * @param ctx context.Context 上下文
-  */
+/**
+ * @description: 消费死信队列消息
+ * @param ctx context.Context 上下文
+ */
 func ConsumeRabbitMQDLQ(ctx context.Context) {
 	msgs, err := rabbitmq.ConsumeMessage(config.Conf.Rabbitmq.DLQName, dlqConsumerTag)
 	if err != nil {
@@ -45,29 +45,32 @@ func ConsumeRabbitMQDLQ(ctx context.Context) {
 				common.Log.Info("[DLQ消费] 消费 channel 已关闭，消费者退出")
 				return
 			}
-			if handleDLQMessage(compRepo, d.Body) {
+			msgCtx := messageContext(ctx, d)
+			logger := common.LoggerFromCtx(msgCtx)
+			if handleDLQMessage(compRepo, msgCtx, d.Body) {
 				if ackErr := d.Ack(false); ackErr != nil {
-					common.Log.Errorf("[DLQ消费] Ack 失败: %v", ackErr)
+					logger.Errorf("[DLQ消费] Ack 失败: %v", ackErr)
 				}
 				continue
 			}
-			common.Log.Errorf("[DLQ消费] [MQ_DLQ_DEAD] 再次落补偿表仍失败，请人工核对 ES/CH body_len=%d",
+			logger.Errorf("[DLQ消费] [MQ_DLQ_DEAD] 再次落补偿表仍失败，请人工核对 ES/CH body_len=%d",
 				len(d.Body))
 			// 必须 Ack，避免在 DLQ 内 Nack 造成死循环
 			if ackErr := d.Ack(false); ackErr != nil {
-				common.Log.Errorf("[DLQ消费] Ack 失败: %v", ackErr)
+				logger.Errorf("[DLQ消费] Ack 失败: %v", ackErr)
 			}
 		}
 	}
 }
 
- /**
-  * @description: 处理死信消息，仅尝试写入 CONSUME 补偿表，由定时任务负责 ES/CH 同步
-  * @param repo repository.IMQCompensationRepository 补偿仓库
-  * @param body []byte 消息体
-  * @return bool 是否处理成功
-  */
-func handleDLQMessage(repo repository.IMQCompensationRepository, body []byte) bool {
+/**
+ * @description: 处理死信消息，仅尝试写入 CONSUME 补偿表，由定时任务负责 ES/CH 同步
+ * @param repo repository.IMQCompensationRepository 补偿仓库
+ * @param ctx context.Context 上下文
+ * @param body []byte 消息体
+ * @return bool 是否处理成功
+ */
+func handleDLQMessage(repo repository.IMQCompensationRepository, ctx context.Context, body []byte) bool {
 	syncErr := &BlogSyncConsistentError{
 		Body:        body,
 		PendingMask: model.SyncPendingAll,
@@ -77,6 +80,6 @@ func handleDLQMessage(repo repository.IMQCompensationRepository, body []byte) bo
 	if err := json.Unmarshal(body, &blog); err == nil && blog.ID != "" {
 		syncErr.Blog = &blog
 	}
-	common.Log.Warnf("[DLQ消费] 尝试再次写入 CONSUME 补偿 blog_id=%s", blog.ID)
-	return compensateConsumeFailure(repo, body, syncErr)
+	common.LoggerFromCtx(ctx).Warnf("[DLQ消费] 尝试再次写入 CONSUME 补偿 blog_id=%s", blog.ID)
+	return compensateConsumeFailure(repo, ctx, body, syncErr)
 }

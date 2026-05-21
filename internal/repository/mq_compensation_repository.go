@@ -2,7 +2,7 @@
  * @Date: 2026-05-18 15:47:03
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-18 21:52:28
+ * @LastEditTime: 2026-05-21 23:41:57
  * @Description: 博客 MQ 补偿仓储（PUBLISH 补 MQ / CONSUME 补 ES+CH）
  */
 package repository
@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"go-blog/internal/common"
 	"go-blog/internal/model"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -28,12 +29,12 @@ const (
  * @return IMQCompensationRepository 博客 MQ 补偿仓储接口
  */
 type IMQCompensationRepository interface {
-	EnqueueBlogPublish(blog *model.Blog, publishErr string) error                                     // 发布补偿入库
-	EnqueueBlogConsume(blog *model.Blog, pendingMask uint8, syncErr string) error                     // 消费补偿入库
-	EnqueueBlogConsumePayload(blogID string, payload []byte, pendingMask uint8, syncErr string) error // 消费补偿入库（payload 版）
-	ListPendingForRetry(limit int) ([]model.BlogMQCompensation, error)                                // 查询待重试的补偿记录
-	MarkSent(id string) error                                                                         // 标记补偿已发送
-	MarkRetry(id string, retryCount int, errMsg string, dead bool, pendingMask uint8) error           // 标记补偿重试
+	EnqueueBlogPublish(blog *model.Blog, publishErr, traceID string) error                                     // 发布补偿入库
+	EnqueueBlogConsume(blog *model.Blog, pendingMask uint8, syncErr, traceID string) error                     // 消费补偿入库
+	EnqueueBlogConsumePayload(blogID string, payload []byte, pendingMask uint8, syncErr, traceID string) error // 消费补偿入库（payload 版）
+	ListPendingForRetry(limit int) ([]model.BlogMQCompensation, error)                                         // 查询待重试的补偿记录
+	MarkSent(id string) error                                                                                  // 标记补偿已发送
+	MarkRetry(id string, retryCount int, errMsg string, dead bool, pendingMask uint8) error                    // 标记补偿重试
 }
 
 type MQCompensationRepository struct{}
@@ -61,12 +62,12 @@ func marshalBlogPayload(blog *model.Blog) ([]byte, error) {
  * @param publishErr string 发布错误
  * @return error 错误
  */
-func (*MQCompensationRepository) EnqueueBlogPublish(blog *model.Blog, publishErr string) error {
+func (*MQCompensationRepository) EnqueueBlogPublish(blog *model.Blog, publishErr, traceID string) error {
 	body, err := marshalBlogPayload(blog)
 	if err != nil {
 		return err
 	}
-	return upsertPendingCompensation(blog.ID, model.TaskTypePublish, 0, body, publishErr)
+	return upsertPendingCompensation(blog.ID, model.TaskTypePublish, 0, body, publishErr, traceID)
 }
 
 /**
@@ -76,12 +77,12 @@ func (*MQCompensationRepository) EnqueueBlogPublish(blog *model.Blog, publishErr
  * @param syncErr string 同步错误
  * @return error 错误
  */
-func (*MQCompensationRepository) EnqueueBlogConsume(blog *model.Blog, pendingMask uint8, syncErr string) error {
+func (*MQCompensationRepository) EnqueueBlogConsume(blog *model.Blog, pendingMask uint8, syncErr, traceID string) error {
 	body, err := marshalBlogPayload(blog)
 	if err != nil {
 		return err
 	}
-	return upsertPendingCompensation(blog.ID, model.TaskTypeConsume, normalizeSyncMask(pendingMask), body, syncErr)
+	return upsertPendingCompensation(blog.ID, model.TaskTypeConsume, normalizeSyncMask(pendingMask), body, syncErr, traceID)
 }
 
 /**
@@ -92,14 +93,14 @@ func (*MQCompensationRepository) EnqueueBlogConsume(blog *model.Blog, pendingMas
  * @param syncErr string 同步错误
  * @return error 错误
  */
-func (*MQCompensationRepository) EnqueueBlogConsumePayload(blogID string, payload []byte, pendingMask uint8, syncErr string) error {
+func (*MQCompensationRepository) EnqueueBlogConsumePayload(blogID string, payload []byte, pendingMask uint8, syncErr, traceID string) error {
 	if len(payload) == 0 {
 		return errors.New("payload 为空")
 	}
 	if blogID == "" {
 		blogID = "unknown"
 	}
-	return upsertPendingCompensation(blogID, model.TaskTypeConsume, normalizeSyncMask(pendingMask), payload, syncErr)
+	return upsertPendingCompensation(blogID, model.TaskTypeConsume, normalizeSyncMask(pendingMask), payload, syncErr, traceID)
 }
 
 /**
@@ -111,16 +112,19 @@ func (*MQCompensationRepository) EnqueueBlogConsumePayload(blogID string, payloa
  * @param errMsg string 错误信息
  * @return error 错误
  */
-func upsertPendingCompensation(blogID, taskType string, pendingMask uint8, payload []byte, errMsg string) error {
+func upsertPendingCompensation(blogID, taskType string, pendingMask uint8, payload []byte, errMsg, traceID string) error {
+	traceID = common.ResolveTraceIDForCompensation(traceID)
+
 	var existing model.BlogMQCompensation
 	err := common.DB.Where(
 		"blog_id = ? AND task_type = ? AND status = ?",
 		blogID, taskType, CompensationStatusPending,
 	).First(&existing).Error
-	// 如果补偿记录不存在，则创建补偿记录
+
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		row := model.BlogMQCompensation{
 			BlogID:      blogID,
+			TraceID:     traceID,
 			TaskType:    taskType,
 			PendingMask: pendingMask,
 			Payload:     payload,
@@ -136,6 +140,9 @@ func upsertPendingCompensation(blogID, taskType string, pendingMask uint8, paylo
 	updates := map[string]interface{}{
 		"payload":    payload,
 		"last_error": errMsg,
+	}
+	if strings.TrimSpace(existing.TraceID) == "" {
+		updates["trace_id"] = traceID
 	}
 	if taskType == model.TaskTypeConsume {
 		updates["pending_mask"] = model.MergeSyncMask(existing.EffectivePendingMask(), pendingMask)

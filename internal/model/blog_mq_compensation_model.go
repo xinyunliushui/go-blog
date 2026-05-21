@@ -27,6 +27,7 @@ const (
 type BlogMQCompensation struct {
 	UUIDModel
 	BlogID      string `gorm:"type:char(36);not null;index:idx_blog_task_status,priority:1;comment:关联 blogs.id" json:"blogId"`
+	TraceID     string `gorm:"column:trace_id;type:char(36);index:idx_blog_mq_compensation_trace_id;comment:关联请求 traceId" json:"traceId"`
 	TaskType    string `gorm:"type:varchar(16);not null;default:PUBLISH;index:idx_blog_task_status,priority:2;comment:PUBLISH|CONSUME" json:"taskType"`
 	PendingMask uint8  `gorm:"not null;default:0;comment:待同步位 ES=1 CH=2 ALL=3" json:"pendingMask"`
 	Payload     []byte `gorm:"type:longtext;not null;comment:Blog消息体(JSON格式)" json:"payload"`
