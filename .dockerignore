@@ -1,0 +1,12 @@
+# 构建 go-blog 镜像时排除无关文件（build context 为项目根目录）
+# .dockerignore 用来 排除不需要打进镜像的文件，可用来加速构建、减少镜像体积和避免镜像污染
+.git
+.gitignore
+.vscode
+logs/
+__debug_bin*
+*.exe
+docker/
+README.md
+**/*_test.go
+**/testdata/

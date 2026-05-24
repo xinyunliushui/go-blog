@@ -30,7 +30,7 @@ func InitMysql() error {
 		return err
 	}
 	// 开发环境：GORM AutoMigrate 补齐表结构（生产/测试库结构变更请用 goose CLI 手动迁移）
-	if env := utils.GetEnv("APP_ENV", "dev"); env == "dev" {
+	if env := utils.GetEnv("APP_ENV", "dev"); env == "dev" || env == "test" {
 		dbAutoMigrate()
 	}
 	return nil

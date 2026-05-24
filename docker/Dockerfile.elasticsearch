@@ -1,0 +1,18 @@
+# Elasticsearch 8.x + IK 中文分词
+# syntax=docker/dockerfile:1
+
+ARG BASE_REGISTRY=docker.1ms.run/library
+ARG ES_VERSION=8.19.5
+
+FROM ${BASE_REGISTRY}/elasticsearch:${ES_VERSION}
+
+ARG ES_VERSION
+
+USER root
+COPY init/elasticsearch/install-ik.sh /tmp/install-ik.sh
+# Windows 下脚本可能是 CRLF，直接执行会因 shebang 报 not found；用 sh 显式执行并去 \r
+RUN sed -i 's/\r$//' /tmp/install-ik.sh \
+    && ES_VERSION="${ES_VERSION}" sh /tmp/install-ik.sh \
+    && rm -f /tmp/install-ik.sh
+
+USER elasticsearch

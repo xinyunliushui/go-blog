@@ -207,6 +207,21 @@ func InitConfig() error {
 	v.AutomaticEnv()
 	// 自动将环境变量映射到配置键。例如 DATABASE_PASSWORD 会覆盖 database.password
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	// 带连字符的配置段需显式绑定，便于 Docker .env 注入（AutomaticEnv 无法生成合法变量名）
+	for key, envKey := range map[string]string{
+		"rabbitmq.vhost":            "RABBITMQ_VHOST",
+		"elastic-search.address":    "ELASTICSEARCH_ADDRESS",
+		"elastic-search.username":   "ELASTICSEARCH_USERNAME",
+		"elastic-search.password":   "ELASTICSEARCH_PASSWORD",
+		"elastic-search.index-name": "ELASTICSEARCH_INDEX_NAME",
+		"click-house.host":          "CLICKHOUSE_HOST",
+		"click-house.port":          "CLICKHOUSE_PORT",
+		"click-house.database":      "CLICKHOUSE_DATABASE",
+		"click-house.username":      "CLICKHOUSE_USERNAME",
+		"click-house.password":      "CLICKHOUSE_PASSWORD",
+	} {
+		_ = v.BindEnv(key, envKey)
+	}
 
 	// 6. 反序列化到结构体
 	if err := v.Unmarshal(Conf); err != nil {

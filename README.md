@@ -36,7 +36,87 @@ go-blog/
     ├── utils/                       # 工具函数；RSA、BCrypt、JSON、环境变量、ES 高亮等
 ```
 
-## 启动前依赖准备
+## 使用Docker快速启动测试环境，体验本项目
+测试环境使用 Docker Compose 一键启动应用及全部依赖（MySQL、RabbitMQ、Elasticsearch、ClickHouse）。相关文件位于 `docker/` 目录：
+
+```text
+docker/
+├── docker-compose.yml          # 服务编排（含健康检查、初始化 Job）
+├── Dockerfile                  # go-blog 多阶段构建
+├── Dockerfile.elasticsearch    # Elasticsearch + IK 分词
+├── .env.example                # 环境变量模板（复制为 .env）
+├── daemon.json.example         # Docker Desktop 国内 registry-mirrors
+├── .gitignore
+└── init/                       # 依赖初始化脚本
+    ├── mysql/
+    ├── rabbitmq/
+    ├── clickhouse/
+    └── elasticsearch/
+```
+
+### 启动前准备
+
+1. 安装并启动 [Docker Desktop](https://www.docker.com/products/docker-desktop/)，确认 Engine 处于 running 状态。
+2. 复制并修改环境变量模板：`copy docker\.env.example docker\.env`。密码、vhost、镜像版本等统一在 `.env` 配置；应用连接参数通过环境变量注入（优先级高于 `internal/config/config.test.yaml`）。
+3. （推荐）Docker Desktop → Settings → Docker Engine，合并 `docker/daemon.json.example` 中的 `registry-mirrors`。
+4. 基础配置仍使用 `internal/config/config.yml` 与 `internal/config/config.test.yaml`（队列名、交换机名等非敏感项）。
+
+### 启动与停止
+
+在项目根目录或 `docker` 目录下执行均可，以下以 `docker` 目录为例：
+
+```shell
+# 进入目标文件夹
+cd docker
+
+# 构建并后台启动全部服务（首次会构建镜像，耗时较长）
+docker compose up -d --build
+
+# 查看容器状态
+docker compose ps
+
+# 查看应用日志
+docker compose logs -f go-blog
+
+# 停止服务（保留数据卷）
+docker compose down
+
+# 彻底结束当前项目并清理相关镜像（不会清空数据卷和缓存）
+docker compose down --rmi all
+
+# 停止并删除数据卷（清空数据库等持久化数据）
+docker compose down -v
+```
+
+也可在 Docker Desktop 中打开 `docker/docker-compose.yml` 所在目录，通过 Compose 的 **Build** / **Up** 启动。
+
+### 访问地址
+
+| 服务 | 地址 |
+|------|------|
+| API | http://localhost:8080/api |
+| 存活探针 | http://localhost:8080/health |
+| 就绪探针 | http://localhost:8080/ready |
+| RabbitMQ 管理台 | http://localhost:15672（admin / 123456） |
+| Elasticsearch | http://localhost:9200 |
+| ClickHouse HTTP | http://localhost:8123 |
+
+就绪探针 `/ready` 返回 200 表示 MySQL、RabbitMQ、Elasticsearch、ClickHouse 均已连通。
+
+### 说明
+
+- `docker/.env` 中的 `RABBITMQ_VHOST`、`MYSQL_DATABASE`、`CLICKHOUSE_DB` 等会同步用于依赖初始化（`rabbitmq-init`、`clickhouse-init` 等）及应用连接，修改后执行 `docker compose up -d` 重建相关容器。
+- 容器内 `APP_ENV=test`，MySQL 表结构由 GORM `AutoMigrate` 自动补齐；若有 `migrations/` 增量脚本，可在宿主机用 goose CLI 连接 `127.0.0.1:3306` 手动执行。
+- 修改 `internal/config` 下非敏感配置后，重启 `go-blog` 容器即可生效（配置目录已挂载进容器）。
+- 所有镜像拉取与构建均默认使用国内源（见 `docker/.env.example`）；第三方镜像版本集中在 `.env` 的 `*_IMAGE_TAG` 字段，升级时只需改一处。
+- MySQL 若报 `Could not open the mysql.plugin table`，多为旧数据卷与镜像版本不兼容，执行 `docker compose down -v` 清空数据卷后重新 `up`。
+- RabbitMQ 若长时间 `unhealthy`，先 `docker compose logs go-blog-rabbitmq` 查看日志；仍失败时执行 `docker compose down -v` 重建 `rabbitmq_data` 后重试。
+- 首次启动时 Elasticsearch 需构建 IK 分词插件镜像，全部依赖 healthcheck 通过后应用才会启动，请耐心等待。
+- 根目录 `.gitattributes` 规定 `docker/init/**` 下脚本统一使用 LF（Unix）换行。这些脚本会在 Linux 容器内执行；Windows 上若检出为 CRLF，可能导致 `sh` 报错（如 `not found`、`bad interpreter`）。Mac 默认即为 LF，一般无此问题；该配置主要保证跨平台协作时脚本在容器内可正常执行。
+
+
+## 本地开发以及前置依赖安装
+### 前置依赖
 以下环境以及预设好对应的`database`，用户名和密码记得更换
 - `MySQL` 需要前置创建database，名称是go_blog
 ``` shell
@@ -61,7 +141,7 @@ rabbitmqctl set_permissions -p go_blog admin "." "." ".*"
 ./bin/elasticsearch-plugin list
 ```
 - `ClickHouse` 需要前置创建database，名称是go_blog
-- 本地开发
+### 本地开发
 ```shell
 # 1、安装依赖
 go mod tidy
@@ -138,3 +218,4 @@ goose -dir migrations mysql "<dsn>" down
 - [`streadway/amqp`](https://github.com/streadway/amqp) — RabbitMQ AMQP 客户端，连接管理、队列声明、消息发布与消费
 - [`go-elasticsearch`](https://github.com/elastic/go-elasticsearch) — Elasticsearch 官方 Go 客户端（v8），博客索引、全文搜索与 ES 对账
 - [`Gorm ClickHouse Driver`](https://github.com/go-gorm/clickhouse) — ClickHouse 的 GORM 驱动（底层 [`clickhouse-go/v2`](https://github.com/ClickHouse/clickhouse-go)），博客异步同步与 OLAP 存储
+

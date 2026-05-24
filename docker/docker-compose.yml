@@ -1,0 +1,231 @@
+name: go-blog-test
+
+# ── 可复用片段 ─────────────────────────────────────────────
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-service: &service
+  restart: unless-stopped
+  networks: [go-blog-net]
+  logging: *logging
+  environment:
+    TZ: Asia/Shanghai
+
+x-init: &init
+  <<: *service
+  restart: "no"
+  pull_policy: if_not_present
+
+x-clickhouse-image: &clickhouse-image "${DOCKER_MIRROR:-docker.1ms.run}/clickhouse/clickhouse-server:${CLICKHOUSE_IMAGE_TAG:-24.8}"
+
+# ── 服务 ───────────────────────────────────────────────────
+services:
+  mysql:
+    <<: *service
+    image: ${DOCKER_MIRROR:-docker.1ms.run}/library/mysql:${MYSQL_IMAGE_TAG:-8.0}
+    container_name: go-blog-mysql
+    pull_policy: if_not_present
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-blogY1Jo)%}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-go_blog}
+      MYSQL_ROOT_HOST: "%"
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
+
+  rabbitmq:
+    <<: *service
+    image: ${DOCKER_MIRROR:-docker.1ms.run}/library/rabbitmq:${RABBITMQ_IMAGE_TAG:-3.13-management-alpine}
+    container_name: go-blog-rabbitmq
+    pull_policy: if_not_present
+    environment:
+      TZ: Asia/Shanghai
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-123456}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 90s
+
+  rabbitmq-init:
+    <<: *init
+    image: ${DOCKER_MIRROR:-docker.1ms.run}/curlimages/curl:${CURL_IMAGE_TAG:-8.12.1}
+    container_name: go-blog-rabbitmq-init
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    env_file: .env
+    volumes:
+      - ./init/rabbitmq/init-vhost.sh:/init-vhost.sh:ro
+    entrypoint:
+      - /bin/sh
+      - -c
+      - cp /init-vhost.sh /tmp/init-vhost.sh && sed -i 's/\r$$//' /tmp/init-vhost.sh && exec sh /tmp/init-vhost.sh
+
+  elasticsearch:
+    <<: *service
+    build:
+      context: .
+      dockerfile: Dockerfile.elasticsearch
+      args:
+        BASE_REGISTRY: ${DOCKER_REGISTRY:-docker.1ms.run/library}
+        ES_VERSION: ${ES_VERSION:-8.19.5}
+    image: go-blog-elasticsearch:${ES_VERSION:-8.19.5}-ik
+    container_name: go-blog-elasticsearch
+    pull_policy: build
+    mem_limit: ${ES_MEM_LIMIT:-1g}
+    environment:
+      TZ: Asia/Shanghai
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: ${ES_JAVA_OPTS:--Xms512m -Xmx512m}
+    ports:
+      - "${ES_PORT:-9200}:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
+
+  clickhouse:
+    <<: *service
+    image: *clickhouse-image
+    container_name: go-blog-clickhouse
+    pull_policy: if_not_present
+    environment:
+      TZ: Asia/Shanghai
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-go_blog}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-admin}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-123456}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      - "${CLICKHOUSE_HTTP_PORT:-8123}:8123"
+      - "${CLICKHOUSE_NATIVE_PORT:-9000}:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --user ${CLICKHOUSE_USER:-admin} --password ${CLICKHOUSE_PASSWORD:-123456} --query 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  clickhouse-init:
+    <<: *init
+    image: *clickhouse-image
+    container_name: go-blog-clickhouse-init
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      CLICKHOUSE_HOST: clickhouse
+    volumes:
+      - ./init/clickhouse/init.sh:/init.sh:ro
+    entrypoint:
+      - /bin/sh
+      - -c
+      - cp /init.sh /tmp/init.sh && sed -i 's/\r$$//' /tmp/init.sh && exec sh /tmp/init.sh
+
+  go-blog:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        BASE_REGISTRY: ${DOCKER_REGISTRY:-docker.1ms.run/library}
+        GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
+        GOSUMDB: ${GOSUMDB:-sum.golang.google.cn}
+        APK_MIRROR: ${APK_MIRROR:-mirrors.aliyun.com}
+    image: go-blog-app:${APP_IMAGE_TAG:-test}
+    container_name: go-blog-app
+    pull_policy: build
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      rabbitmq-init:
+        condition: service_completed_successfully
+      elasticsearch:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      clickhouse-init:
+        condition: service_completed_successfully
+    env_file: .env
+    environment:
+      APP_ENV: ${APP_ENV:-test}
+      TZ: Asia/Shanghai
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-blogY1Jo)%}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-go_blog}
+      RABBITMQ_USERNAME: ${RABBITMQ_USER:-admin}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-123456}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-go_blog}
+      ELASTICSEARCH_ADDRESS: ${ELASTICSEARCH_ADDRESS:-http://elasticsearch:9200}
+      ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-admin}
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-123456}
+      ELASTICSEARCH_INDEX_NAME: ${ELASTICSEARCH_INDEX_NAME:-go_blog}
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: 9000
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DB:-go_blog}
+      CLICKHOUSE_USERNAME: ${CLICKHOUSE_USER:-admin}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-123456}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - ../internal/config:/app/internal/config:ro
+      - ../public_key.pem:/app/public_key.pem:ro
+      - ../private_key.pem:/app/private_key.pem:ro
+      - app_logs:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ready | grep -q '\"status\":\"ready\"'"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+volumes:
+  mysql_data:
+  rabbitmq_data:
+  elasticsearch_data:
+  clickhouse_data:
+  app_logs:
+
+networks:
+  go-blog-net:
+    driver: bridge
