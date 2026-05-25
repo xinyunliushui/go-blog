@@ -58,8 +58,7 @@ docker/
 
 1. 安装并启动 [Docker Desktop](https://www.docker.com/products/docker-desktop/)，确认 Engine 处于 running 状态。
 2. 复制并修改环境变量模板：`copy docker\.env.example docker\.env`。密码、vhost、镜像版本等统一在 `.env` 配置；应用连接参数通过环境变量注入（优先级高于 `internal/config/config.test.yaml`）。
-3. （推荐）Docker Desktop → Settings → Docker Engine，合并 `docker/daemon.json.example` 中的 `registry-mirrors`。
-4. 基础配置仍使用 `internal/config/config.yml` 与 `internal/config/config.test.yaml`（队列名、交换机名等非敏感项）。
+3. 基础配置仍使用 `internal/config/config.yml` 与 `internal/config/config.test.yaml`（队列名、交换机名等非敏感项）。
 
 ### 启动与停止
 
