@@ -14,6 +14,7 @@ import (
 	"go-blog/internal/model"
 	"go-blog/internal/repository"
 	"go-blog/internal/response"
+	"go-blog/internal/utils"
 	"go-blog/internal/vo"
 	"strings"
 
@@ -96,17 +97,17 @@ func (rc *RoleController) CreateRole(ctx *gin.Context) {
 		return
 	}
 
-	role := model.Role{
+	role := &model.Role{
 		Name:    req.Name,
 		Keyword: req.Keyword,
-		Desc:    &req.Desc,
+		Desc:    utils.OptionalString(req.Desc),
 		Status:  req.Status,
 		Sort:    req.Sort,
 		Creator: ctxUser.Username,
 	}
 
 	// 创建角色
-	err = rc.RoleRepository.CreateRole(&role)
+	err = rc.RoleRepository.CreateRole(role)
 	if err != nil {
 		response.FailErr(ctx, nil, "创建角色失败", err)
 		return
@@ -167,17 +168,17 @@ func (rc *RoleController) UpdateRoleById(ctx *gin.Context) {
 		return
 	}
 
-	role := model.Role{
+	role := &model.Role{
 		Name:    req.Name,
 		Keyword: req.Keyword,
-		Desc:    &req.Desc,
+		Desc:    utils.OptionalString(req.Desc),
 		Status:  req.Status,
 		Sort:    req.Sort,
 		Creator: ctxUser.Username,
 	}
 
 	// 更新角色
-	err = rc.RoleRepository.UpdateRoleById(roleId, &role)
+	err = rc.RoleRepository.UpdateRoleById(roleId, role)
 	if err != nil {
 		response.FailErr(ctx, nil, "更新角色失败", err)
 		return

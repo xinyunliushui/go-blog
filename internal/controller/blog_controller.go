@@ -15,6 +15,7 @@ import (
 	"go-blog/internal/rabbitmq"
 	"go-blog/internal/repository"
 	"go-blog/internal/response"
+	"go-blog/internal/utils"
 	"go-blog/internal/vo"
 	"strings"
 	"time"
@@ -96,26 +97,26 @@ func (bc *BlogController) CreateBlog(ctx *gin.Context) {
 		response.FailErr(ctx, nil, "获取当前用户信息失败", err)
 		return
 	}
-	blog := model.Blog{
+	blog := &model.Blog{
 		Title:      req.Title,
 		Content:    req.Content,
 		Summary:    req.Summary,
 		CoverImage: req.CoverImage,
-		Category:   &req.Category,
-		Tags:       &req.Tags,
+		Category:   utils.OptionalString(req.Category),
+		Tags:       utils.OptionalString(req.Tags),
 		Author:     ctxUser.Username, // 文章作者
 	}
-	err = bc.BlogRepository.CreateBlog(&blog)
+	err = bc.BlogRepository.CreateBlog(blog)
 	if err != nil {
 		response.FailErr(ctx, nil, "创建文章失败", err)
 		return
 	}
 
-	if err := rabbitmq.PublishMessage(ctx.Request.Context(), config.Conf.Rabbitmq.QueueName, &blog); err != nil {
+	if err := rabbitmq.PublishMessage(ctx.Request.Context(), config.Conf.Rabbitmq.QueueName, blog); err != nil {
 		common.LoggerFromGin(ctx).Errorf("[消息推送补偿] blog_id=%s RabbitMQ 首次投递失败，写入本地补偿表: %v", blog.ID, err)
 		compRepo := repository.NewMQCompensationRepository()
 		// 写入本地补偿表
-		if encErr := compRepo.EnqueueBlogPublish(&blog, err.Error(), common.TraceIDFromGin(ctx)); encErr != nil {
+		if encErr := compRepo.EnqueueBlogPublish(blog, err.Error(), common.TraceIDFromGin(ctx)); encErr != nil {
 			common.LoggerFromGin(ctx).Errorf("[消息推送补偿] blog_id=%s 补偿表写入失败（需人工核对 MySQL 与 ES/CH）: %v", blog.ID, encErr)
 			response.Fail(ctx, gin.H{"blogId": blog.ID}, "文章已保存，但消息队列不可用且补偿记录失败，请联系管理员")
 			return
@@ -179,20 +180,20 @@ func (bc *BlogController) UpdateBlogById(ctx *gin.Context) {
 		response.Fail(ctx, nil, "文章ID不正确")
 		return
 	}
-	blog := model.Blog{
+	blog := &model.Blog{
 		Title:      req.Title,
 		Content:    req.Content,
 		Summary:    req.Summary,
 		CoverImage: req.CoverImage,
-		Category:   &req.Category,
-		Tags:       &req.Tags,
+		Category:   utils.OptionalString(req.Category),
+		Tags:       utils.OptionalString(req.Tags),
 	}
-	err := bc.BlogRepository.UpdateBlogById(blogId, &blog)
+	err := bc.BlogRepository.UpdateBlogById(blogId, blog)
 	if err != nil {
 		response.FailErr(ctx, nil, "更新文章失败", err)
 		return
 	}
-	if err := repository.UpdateBlogFieldsInESByBlog(blogId, &blog); err != nil {
+	if err := repository.UpdateBlogFieldsInESByBlog(blogId, blog); err != nil {
 		common.Log.Errorf("blog_id=%s 同步 ES 可检索字段失败: %v", blogId, err)
 	}
 	response.Success(ctx, nil, "更新文章成功")

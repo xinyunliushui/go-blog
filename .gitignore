@@ -1,3 +1,6 @@
+# Local History 插件备份
+.history/
+
 # 忽略日志文件
 /logs/
 
@@ -6,6 +9,7 @@ __debug_bin*
 
 # 忽略可执行文件
 go-blog.exe
+main.exe
 
 # 忽略不可变更基础配置
 private_key.pem

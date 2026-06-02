@@ -13,6 +13,7 @@ import (
 	"go-blog/internal/model"
 	"go-blog/internal/repository"
 	"go-blog/internal/response"
+	"go-blog/internal/utils"
 	"go-blog/internal/vo"
 	"strings"
 
@@ -94,25 +95,20 @@ func (mc *MenuController) CreateMenu(c *gin.Context) {
 		return
 	}
 
-	var parentPtr *string
-	if pid := strings.TrimSpace(req.ParentId); pid != "" {
-		parentPtr = &pid
-	}
-
-	menu := model.Menu{
+	menu := &model.Menu{
 		Name:     req.Name,
 		Title:    req.Title,
-		Icon:     &req.Icon,
+		Icon:     utils.OptionalString(req.Icon),
 		Path:     req.Path,
-		Redirect: &req.Redirect,
+		Redirect: utils.OptionalString(req.Redirect),
 		Sort:     req.Sort,
 		Status:   req.Status,
 		Type:     req.Type,
-		ParentId: parentPtr,
+		ParentId: utils.OptionalString(req.ParentId),
 		Creator:  ctxUser.Username,
 	}
 
-	err = mc.MenuRepository.CreateMenu(&menu)
+	err = mc.MenuRepository.CreateMenu(menu)
 	if err != nil {
 		response.FailErr(c, nil, "创建菜单失败", err)
 		return
@@ -162,25 +158,20 @@ func (mc *MenuController) UpdateMenuById(c *gin.Context) {
 		return
 	}
 
-	var parentPtr *string
-	if pid := strings.TrimSpace(req.ParentId); pid != "" {
-		parentPtr = &pid
-	}
-
-	menu := model.Menu{
+	menu := &model.Menu{
 		Name:     req.Name,
 		Title:    req.Title,
-		Icon:     &req.Icon,
+		Icon:     utils.OptionalString(req.Icon),
 		Path:     req.Path,
-		Redirect: &req.Redirect,
+		Redirect: utils.OptionalString(req.Redirect),
 		Sort:     req.Sort,
 		Status:   req.Status,
 		Type:     req.Type,
-		ParentId: parentPtr,
+		ParentId: utils.OptionalString(req.ParentId),
 		Creator:  ctxUser.Username,
 	}
 
-	err = mc.MenuRepository.UpdateMenuById(menuId, &menu)
+	err = mc.MenuRepository.UpdateMenuById(menuId, menu)
 	if err != nil {
 		response.FailErr(c, nil, "更新菜单失败", err)
 		return

@@ -1,8 +1,8 @@
 /*
  * @Date: 2026-03-18 21:50:24
  * @Author: zhongwenhao
- * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-05-07 15:16:19
+ * @LastEditors: zhongwh 746227367@qq.com
+ * @LastEditTime: 2026-06-02 16:22:21
  * @Description: main
  */
 package main
@@ -21,10 +21,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 )
+
+// listenAndServe 阻塞监听 HTTP；供独立 goroutine 调用，避免 main 内闭包逃逸。
+func listenAndServe(server *http.Server) {
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		common.Log.Errorf("listen: %s\n", err)
+	}
+}
 
 func main() {
 	// 初始化配置
@@ -63,32 +69,9 @@ func main() {
 		common.Log.Errorf("初始化 ClickHouse 失败（服务仍将启动，就绪探针会失败）: %v", err)
 	}
 
-	// 启动消费者：用独立 ctx，停机时先 cancel 再等 wg，最后关闭 MQ 连接，避免泄漏 goroutine 或对已关闭连接 Ack
-	consumerCtx, stopConsumer := context.WithCancel(context.Background())
-	var consumerWg sync.WaitGroup
-	consumerWg.Add(1)
-	go func() {
-		defer consumerWg.Done()
-		service.ConsumeRabbitMQ(consumerCtx, service.HandleArticleMessage)
-	}()
-
-	// 启动死信队列消费者
-	dlqCtx, stopDLQ := context.WithCancel(context.Background())
-	var dlqWg sync.WaitGroup
-	dlqWg.Add(1)
-	go func() {
-		defer dlqWg.Done()
-		service.ConsumeRabbitMQDLQ(dlqCtx)
-	}()
-
-	// 博客 MQ 补偿重试（PUBLISH 补 MQ / CONSUME 补 ES+CH，先于关闭 MQ 连接停止）
-	compensationCtx, stopCompensation := context.WithCancel(context.Background())
-	var compensationWg sync.WaitGroup
-	compensationWg.Add(1)
-	go func() {
-		defer compensationWg.Done()
-		service.RunBlogMQCompensationRetry(compensationCtx)
-	}()
+	// nq后台任务：单一 WaitGroup + 命名方法，减少 main 栈变量与闭包逃逸
+	rootCtx := context.Background()
+	bgWorkers := service.StartMqBackgroundWorkers(rootCtx)
 
 	// 初始化路由服务
 	router := routes.InitRoutes()
@@ -101,12 +84,7 @@ func main() {
 		Handler: router.Handler(),
 	}
 
-	go func() {
-		// 服务启动, 监听端口
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			common.Log.Errorf("listen: %s\n", err)
-		}
-	}()
+	go listenAndServe(server)
 
 	// ==================== 优雅停机处理 ====================
 	// 创建带缓冲的信号channel（缓冲1，确保第一个信号能被捕获）
@@ -122,7 +100,7 @@ func main() {
 	signal.Stop(quit)
 	common.Log.Info("开始关闭服务...")
 	// 优雅关闭进程（给正在处理的请求最多5秒完成）
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(rootCtx, 5*time.Second)
 	defer cancel()
 	// 先关流量 -> 再关中间件 -> 再释放资源
 	// 1. 停止接受新的 HTTP 请求，等待已有请求结束或超时
@@ -130,18 +108,10 @@ func main() {
 		common.Log.Errorf("HTTP 服务关闭出错: %v", err)
 	}
 
-	// 2. 停止 MQ 补偿重试（不再 Publish / 直写 ES+CH），再停消费者
-	stopCompensation()
-	compensationWg.Wait()
+	// 2. 停止 MQ 补偿与消费者（须在关闭 RabbitMQ 连接之前）
+	bgWorkers.Stop()
 
-	// 3. 停止 RabbitMQ
-	// 停止主消费与 DLQ 消费
-	stopConsumer()
-	consumerWg.Wait()
-	// 停止死信队列消费者
-	stopDLQ()
-	dlqWg.Wait()
-	// 关闭 RabbitMQ 连接
+	// 3. 关闭 RabbitMQ 连接
 	rabbitmq.CloseRabbitMQ()
 	common.Log.Info("RabbitMQ 连接已关闭")
 

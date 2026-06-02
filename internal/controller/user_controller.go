@@ -110,7 +110,7 @@ func (uc *UserController) CreateUser(ctx *gin.Context) {
 	if userStatus == 0 {
 		userStatus = 1
 	}
-	user := model.User{
+	user := &model.User{
 		Username:     req.Username,
 		Mobile:       req.Mobile,
 		Avatar:       req.Avatar,
@@ -130,7 +130,7 @@ func (uc *UserController) CreateUser(ctx *gin.Context) {
 		}
 		user.Password = utils.GenPasswd(string(decodeData))
 	}
-	err = uc.UserRepository.CreateUser(&user)
+	err = uc.UserRepository.CreateUser(user)
 	if err != nil {
 		response.FailErr(ctx, nil, "创建用户失败", err)
 		return
@@ -213,7 +213,7 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 		targetRoleSortMin = funk.MinInt(targetRoleSorts)
 	}
 
-	user := model.User{
+	user := &model.User{
 		UUIDModel:    oldUser.UUIDModel,
 		Username:     req.Username,
 		Password:     oldUser.Password,
@@ -270,7 +270,7 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 	}
 
 	// 更新用户
-	err = uc.UserRepository.UpdateUserById(&user)
+	err = uc.UserRepository.UpdateUserById(user)
 	if err != nil {
 		response.FailErr(ctx, nil, "更新用户失败", err)
 		return
