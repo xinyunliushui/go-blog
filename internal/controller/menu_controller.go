@@ -107,10 +107,20 @@ func (mc *MenuController) CreateMenu(c *gin.Context) {
 		ParentId: utils.OptionalString(req.ParentId),
 		Creator:  ctxUser.Username,
 	}
-
-	err = mc.MenuRepository.CreateMenu(menu)
+	requestID, err := common.ResolveRequestID(c, req.RequestId)
 	if err != nil {
-		response.FailErr(c, nil, "创建菜单失败", err)
+		response.Fail(c, nil, err.Error())
+		return
+	}
+	menu.RequestId = common.RequestIDPtr(requestID)
+
+	duplicate, err := mc.MenuRepository.CreateMenu(menu)
+	if err != nil {
+		handleWriteError(c, "创建菜单失败", err)
+		return
+	}
+	if duplicate {
+		response.Duplicate(c, gin.H{"menuId": menu.ID}, msgCreateDuplicate)
 		return
 	}
 	response.Success(c, nil, "创建菜单成功")
@@ -139,7 +149,7 @@ func (mc *MenuController) UpdateMenuById(c *gin.Context) {
 		response.Fail(c, nil, "菜单ID不正确")
 		return
 	}
-	var req vo.CreateMenuRequest
+	var req vo.UpdateMenuRequest
 	// 参数绑定
 	if err := c.ShouldBind(&req); err != nil {
 		response.Fail(c, nil, common.ValidationErrString(err))
@@ -148,6 +158,9 @@ func (mc *MenuController) UpdateMenuById(c *gin.Context) {
 	// 参数校验
 	if err := common.Validate.Struct(&req); err != nil {
 		response.Fail(c, nil, common.ValidationErrString(err))
+		return
+	}
+	if !requireVersion(c, req.Version) {
 		return
 	}
 	// 获取当前用户
@@ -171,9 +184,13 @@ func (mc *MenuController) UpdateMenuById(c *gin.Context) {
 		Creator:  ctxUser.Username,
 	}
 
-	err = mc.MenuRepository.UpdateMenuById(menuId, menu)
+	duplicate, err := mc.MenuRepository.UpdateMenuById(menuId, req.Version, menu)
 	if err != nil {
-		response.FailErr(c, nil, "更新菜单失败", err)
+		handleWriteError(c, "更新菜单失败", err)
+		return
+	}
+	if duplicate {
+		response.Duplicate(c, nil, msgUpdateDuplicate)
 		return
 	}
 	response.Success(c, nil, "更新菜单成功")

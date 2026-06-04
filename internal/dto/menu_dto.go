@@ -15,6 +15,7 @@ type MenuDto struct {
 	Type     uint      `json:"type"`
 	ParentId string    `json:"parentId"`
 	Creator  string    `json:"creator"`
+	Version  uint      `json:"version"`
 	Children []MenuDto `json:"children"`
 }
 
@@ -43,6 +44,7 @@ func ToMenuTreeDto(menus []*model.Menu) []MenuDto {
 			Type:     menu.Type,
 			ParentId: PtrParentIDString(menu.ParentId),
 			Creator:  menu.Creator,
+			Version:  menu.Version,
 		}
 		if len(menu.Children) > 0 {
 			newMenu.Children = ToMenuTreeDto(menu.Children)
@@ -69,6 +71,7 @@ func ToMenuDto(menu *model.Menu) MenuDto {
 		Type:     menu.Type,
 		ParentId: PtrParentIDString(menu.ParentId),
 		Creator:  menu.Creator,
+		Version:  menu.Version,
 	}
 }
 

@@ -7,8 +7,8 @@
  */
 package vo
 
-// 创建接口结构体
-type CreateMenuRequest struct {
+// MenuWriteBody 创建/更新菜单共用字段。
+type MenuWriteBody struct {
 	Name     string `json:"name" form:"name" validate:"required,min=1,max=50"`
 	Title    string `json:"title" form:"title" validate:"required,min=1,max=50"`
 	Icon     string `json:"icon" form:"icon" validate:"min=0,max=50"`
@@ -18,4 +18,16 @@ type CreateMenuRequest struct {
 	Status   uint   `json:"status" form:"status" validate:"oneof=1 2"`
 	Type     uint   `json:"Type" form:"Type" validate:"oneof=1 2 3"`
 	ParentId string `json:"parentId" form:"parentId"`
+}
+
+// CreateMenuRequest 创建菜单：仅需 requestId，不需 version。
+type CreateMenuRequest struct {
+	IdempotentCreateRequest
+	MenuWriteBody
+}
+
+// UpdateMenuRequest 更新菜单：必须携带 version。
+type UpdateMenuRequest struct {
+	OptimisticLockRequest
+	MenuWriteBody
 }

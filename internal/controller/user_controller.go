@@ -23,6 +23,12 @@ import (
 	"github.com/thoas/go-funk"
 )
 
+// isAuthRegister 是否为公开注册（POST /auth/register），与后台创建用户区分校验规则。
+func isAuthRegister(ctx *gin.Context) bool {
+	path := strings.TrimSpace(ctx.Request.URL.Path)
+	return strings.HasSuffix(path, "/auth/register")
+}
+
 type IUserController interface {
 	GetUserInfo(ctx *gin.Context)    // 获取当前登录用户信息
 	GetUsers(ctx *gin.Context)       // 获取用户列表
@@ -84,7 +90,7 @@ func (uc *UserController) GetUsers(ctx *gin.Context) {
  * @return void
  */
 func (uc *UserController) CreateUser(ctx *gin.Context) {
-	var req vo.CreateOrUpdateUserRequest
+	var req vo.CreateUserRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
 		response.Fail(ctx, nil, common.ValidationErrString(err))
@@ -93,6 +99,15 @@ func (uc *UserController) CreateUser(ctx *gin.Context) {
 	// 参数校验
 	if err := common.Validate.Struct(&req); err != nil {
 		response.Fail(ctx, nil, common.ValidationErrString(err))
+		return
+	}
+	if strings.TrimSpace(req.Password) == "" {
+		response.Fail(ctx, nil, "密码不能为空")
+		return
+	}
+	// 后台创建用户须指定角色；注册可不传 roleIds
+	if !isAuthRegister(ctx) && len(req.RoleIds) == 0 {
+		response.Fail(ctx, nil, "请至少选择一个角色")
 		return
 	}
 	// 创建用户
@@ -110,7 +125,13 @@ func (uc *UserController) CreateUser(ctx *gin.Context) {
 	if userStatus == 0 {
 		userStatus = 1
 	}
+	requestID, err := common.ResolveRequestID(ctx, req.RequestId)
+	if err != nil {
+		response.Fail(ctx, nil, err.Error())
+		return
+	}
 	user := &model.User{
+		UUIDModel:    model.UUIDModel{RequestId: common.RequestIDPtr(requestID)},
 		Username:     req.Username,
 		Mobile:       req.Mobile,
 		Avatar:       req.Avatar,
@@ -130,9 +151,13 @@ func (uc *UserController) CreateUser(ctx *gin.Context) {
 		}
 		user.Password = utils.GenPasswd(string(decodeData))
 	}
-	err = uc.UserRepository.CreateUser(user)
+	duplicate, err := uc.UserRepository.CreateUser(user)
 	if err != nil {
-		response.FailErr(ctx, nil, "创建用户失败", err)
+		handleWriteError(ctx, "创建用户失败", err)
+		return
+	}
+	if duplicate {
+		response.Duplicate(ctx, gin.H{"userId": user.ID}, msgCreateDuplicate)
 		return
 	}
 	response.Success(ctx, nil, "创建用户成功")
@@ -148,7 +173,7 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 		response.Fail(ctx, nil, "用户ID不正确")
 		return
 	}
-	var req vo.CreateOrUpdateUserRequest
+	var req vo.UpdateUserRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
 		response.Fail(ctx, nil, common.ValidationErrString(err))
@@ -157,6 +182,9 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 	// 参数校验
 	if err := common.Validate.Struct(&req); err != nil {
 		response.Fail(ctx, nil, common.ValidationErrString(err))
+		return
+	}
+	if !requireVersion(ctx, req.Version) {
 		return
 	}
 
@@ -189,30 +217,6 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 		currentRoleSortMin = funk.MinInt(currentRoleSorts)
 	}
 
-	// 更新的角色信息-预期目标
-	targetRoleIds := req.RoleIds
-	var targetRoles []*model.Role
-	var targetRoleSortMin int = 999 // 默认等级最低
-	if len(targetRoleIds) != 0 {
-		// 根据角色id获取角色
-		rr := repository.NewRoleRepository()
-		targetRoles, err = rr.GetRolesByIds(targetRoleIds)
-		if err != nil {
-			response.FailErr(ctx, nil, "获取用户角色信息失败", err)
-			return
-		}
-		if len(targetRoles) == 0 {
-			response.Fail(ctx, nil, "未获取到角色信息")
-			return
-		}
-		var targetRoleSorts []int
-		for _, role := range targetRoles {
-			targetRoleSorts = append(targetRoleSorts, int(role.Sort))
-		}
-		// 前端传来用户角色排序最小值（最高等级角色）
-		targetRoleSortMin = funk.MinInt(targetRoleSorts)
-	}
-
 	user := &model.User{
 		UUIDModel:    oldUser.UUIDModel,
 		Username:     req.Username,
@@ -233,12 +237,13 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 			response.Fail(ctx, nil, "不能禁用自己")
 			return
 		}
-		// 不能变更自己的角色
-		reqDiff, currentDiff := funk.DifferenceString(req.RoleIds, currentRoleIds)
-		if len(reqDiff) > 0 || len(currentDiff) > 0 {
-			// 对比有差异，则不能更改
-			response.Fail(ctx, nil, "不能更改自己的角色")
-			return
+		// 请求体携带 roleIds 时不允许变更自己的角色
+		if req.RoleIds != nil {
+			reqDiff, currentDiff := funk.DifferenceString(*req.RoleIds, currentRoleIds)
+			if len(reqDiff) > 0 || len(currentDiff) > 0 {
+				response.Fail(ctx, nil, "不能更改自己的角色")
+				return
+			}
 		}
 		// 不能更新自己的密码，只能在个人中心更新
 		if req.Password != "" {
@@ -262,17 +267,45 @@ func (uc *UserController) UpdateUserById(ctx *gin.Context) {
 				return
 			}
 		}
-		if currentRoleSortMin >= targetRoleSortMin {
-			response.Fail(ctx, nil, "用户不能把别的用户角色等级更新得比自己高或相等")
-			return
+		if req.RoleIds != nil {
+			targetRoleIds := *req.RoleIds
+			var targetRoles []*model.Role
+			targetRoleSortMin := 999
+			if len(targetRoleIds) > 0 {
+				rr := repository.NewRoleRepository()
+				targetRoles, err = rr.GetRolesByIds(targetRoleIds)
+				if err != nil {
+					response.FailErr(ctx, nil, "获取用户角色信息失败", err)
+					return
+				}
+				if len(targetRoles) == 0 {
+					response.Fail(ctx, nil, "未获取到角色信息")
+					return
+				}
+				targetRoleSorts := make([]int, 0, len(targetRoles))
+				for _, role := range targetRoles {
+					targetRoleSorts = append(targetRoleSorts, int(role.Sort))
+				}
+				targetRoleSortMin = funk.MinInt(targetRoleSorts)
+			}
+			if currentRoleSortMin >= targetRoleSortMin {
+				response.Fail(ctx, nil, "用户不能把别的用户角色等级更新得比自己高或相等")
+				return
+			}
+			user.Roles = targetRoles
+		} else {
+			user.Roles = oldUser.Roles
 		}
-		user.Roles = targetRoles
 	}
 
 	// 更新用户
-	err = uc.UserRepository.UpdateUserById(user)
+	duplicate, err := uc.UserRepository.UpdateUserById(user, req.Version)
 	if err != nil {
-		response.FailErr(ctx, nil, "更新用户失败", err)
+		handleWriteError(ctx, "更新用户失败", err)
+		return
+	}
+	if duplicate {
+		response.Duplicate(ctx, nil, msgUpdateDuplicate)
 		return
 	}
 	response.Success(ctx, nil, "更新用户成功")
@@ -294,6 +327,9 @@ func (uc *UserController) ChangePwd(ctx *gin.Context) {
 	// 参数校验
 	if err := common.Validate.Struct(&req); err != nil {
 		response.Fail(ctx, nil, common.ValidationErrString(err))
+		return
+	}
+	if !requireVersion(ctx, req.Version) {
 		return
 	}
 
@@ -327,9 +363,14 @@ func (uc *UserController) ChangePwd(ctx *gin.Context) {
 		return
 	}
 	// 更新密码
-	err = uc.UserRepository.ChangePwd(user.Username, utils.GenPasswd(req.NewPassword))
+	hashNewPasswd := utils.GenPasswd(req.NewPassword)
+	duplicate, err := uc.UserRepository.ChangePwd(user.Username, req.Version, hashNewPasswd)
 	if err != nil {
-		response.FailErr(ctx, nil, "更新密码失败", err)
+		handleWriteError(ctx, "更新密码失败", err)
+		return
+	}
+	if duplicate {
+		response.Duplicate(ctx, nil, msgUpdateDuplicate)
 		return
 	}
 	response.Success(ctx, nil, "更新密码成功")

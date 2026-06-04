@@ -13,3 +13,13 @@ type PaginationRequest struct {
 	PageSize int    `json:"pageSize" form:"pageSize" binding:"required,min=1,max=100"`
 	Sort     string `json:"sort" form:"sort"`
 }
+
+// IdempotentCreateRequest 创建类接口（POST …/create）：幂等 requestId，不携带 version。
+type IdempotentCreateRequest struct {
+	RequestId string `json:"requestId" form:"requestId" validate:"max=64"`
+}
+
+// OptimisticLockRequest 更新类接口（POST …/update/…）：必须携带 version，不使用 requestId。
+type OptimisticLockRequest struct {
+	Version uint `json:"version" form:"version" validate:"required,min=1"`
+}

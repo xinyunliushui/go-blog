@@ -31,11 +31,11 @@ type IUserRepository interface {
 	GetUsers(req *vo.UserListRequest) ([]model.User, int64, error)
 	GetCurrentUser(c *gin.Context) (model.User, error)                  // 获取当前登录用户信息
 	GetUserById(id string) (model.User, error)                          // 获取单个用户信息
-	CreateUser(user *model.User) error                                  // 创建用户
-	UpdateUserById(user *model.User) error                              // 更新用户
+	CreateUser(user *model.User) (duplicate bool, err error)                                  // 创建用户
+	UpdateUserById(user *model.User, version uint) (duplicate bool, err error)                // 更新用户
 	GetUserMinRoleSortsByIds(ids []string) ([]int, error)               // 根据用户ID获取用户角色排序最小值
 	GetCurrentUserMinRoleSort(c *gin.Context) (uint, model.User, error) // 获取当前用户角色排序最小值（最高等级角色）以及当前用户信息
-	ChangePwd(username string, hashNewPasswd string) error              // 更新密码
+	ChangePwd(username string, version uint, hashNewPasswd string) (duplicate bool, err error) // 更新密码
 }
 
 type UserRepository struct {
@@ -130,30 +130,94 @@ func (ur *UserRepository) GetUserById(id string) (model.User, error) {
 
 /** 创建用户
  * @param user *model.User 用户
- * @return error
+ * @return duplicate, error
  */
-func (ur *UserRepository) CreateUser(user *model.User) error {
+func (ur *UserRepository) CreateUser(user *model.User) (bool, error) {
+	intended := *user
+	targetRoleIDs := make([]string, 0, len(user.Roles))
+	for _, role := range user.Roles {
+		targetRoleIDs = append(targetRoleIDs, role.ID)
+	}
 	err := common.DB.Create(user).Error
-	return err
+	requestID := ""
+	if user.RequestId != nil {
+		requestID = *user.RequestId
+	}
+	return handleCreateIdempotency(common.DB, requestID, err, func() (bool, error) {
+		var existing model.User
+		if loadErr := common.DB.Where("request_id = ?", requestID).Preload("Roles").First(&existing).Error; loadErr != nil {
+			return false, err
+		}
+		if !userFieldsMatch(&existing, &intended, targetRoleIDs) {
+			return false, nil
+		}
+		*user = existing
+		return true, nil
+	})
+}
+
+func userFieldsMatch(current, target *model.User, targetRoleIDs []string) bool {
+	if current.Username != target.Username ||
+		current.Mobile != target.Mobile ||
+		current.Avatar != target.Avatar ||
+		current.Nickname != target.Nickname ||
+		current.Introduction != target.Introduction ||
+		current.Status != target.Status {
+		return false
+	}
+	currentRoleIDs := make([]string, 0, len(current.Roles))
+	for _, role := range current.Roles {
+		currentRoleIDs = append(currentRoleIDs, role.ID)
+	}
+	return common.StringSliceEqualUnordered(currentRoleIDs, targetRoleIDs)
 }
 
 /** 更新用户信息及其角色关联
  * @param user *model.User 用户
- * @return error
+ * @param version 乐观锁版本号
+ * @return duplicate, error
  */
-func (ur *UserRepository) UpdateUserById(user *model.User) error {
+func (ur *UserRepository) UpdateUserById(user *model.User, version uint) (bool, error) {
+	targetRoleIDs := make([]string, 0, len(user.Roles))
+	for _, role := range user.Roles {
+		targetRoleIDs = append(targetRoleIDs, role.ID)
+	}
+
+	var duplicate bool
 	err := common.Transaction(func(gdb *gorm.DB) error {
-		// Omit Roles 避免 Updates 误写多对多
-		if err := gdb.Model(user).Omit("Roles").Updates(user).Error; err != nil {
-			return err
+		updates := map[string]interface{}{
+			"username":     user.Username,
+			"mobile":       user.Mobile,
+			"avatar":       user.Avatar,
+			"nickname":     user.Nickname,
+			"introduction": user.Introduction,
+			"status":       user.Status,
+			"creator":      user.Creator,
+			"version":      version + 1,
 		}
-		// 更新 user_role 关联表（Replace 会先删旧关联再建新关联）
+		result := gdb.Model(&model.User{}).Where("id = ? AND version = ?", user.ID, version).Updates(updates)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			var current model.User
+			if err := gdb.Where("id = ?", user.ID).Preload("Roles").First(&current).Error; err != nil {
+				return err
+			}
+			if userFieldsMatch(&current, user, targetRoleIDs) {
+				duplicate = true
+				*user = current
+				return nil
+			}
+			return common.ErrOptimisticLockConflict
+		}
 		if err := gdb.Model(user).Association("Roles").Replace(user.Roles); err != nil {
 			return err
 		}
+		user.Version = version + 1
 		return nil
 	})
-	return err
+	return duplicate, err
 }
 
 /** 根据用户ID获取用户角色排序最小值
@@ -220,10 +284,23 @@ func minRoleSort(vals []int) int {
 
 /** 更新密码
  * @param username string 用户名
+ * @param version 乐观锁版本号
  * @param hashNewPasswd string 新密码
- * @return error
+ * @return duplicate, error
  */
-func (ur *UserRepository) ChangePwd(username string, hashNewPasswd string) error {
-	err := common.DB.Model(&model.User{}).Where("username = ?", username).Update("password", hashNewPasswd).Error
-	return err
+func (ur *UserRepository) ChangePwd(username string, version uint, hashNewPasswd string) (bool, error) {
+	result := common.DB.Model(&model.User{}).
+		Where("username = ? AND version = ?", username, version).
+		Updates(map[string]interface{}{"password": hashNewPasswd, "version": version + 1})
+	if result.Error != nil {
+		return false, result.Error
+	}
+	if result.RowsAffected > 0 {
+		return false, nil
+	}
+	var current model.User
+	if err := common.DB.Where("username = ?", username).First(&current).Error; err != nil {
+		return false, err
+	}
+	return applyOptimisticLockResult(current.Password == hashNewPasswd, result.RowsAffected, nil)
 }

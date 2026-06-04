@@ -105,11 +105,21 @@ func (rc *RoleController) CreateRole(ctx *gin.Context) {
 		Sort:    req.Sort,
 		Creator: ctxUser.Username,
 	}
+	requestID, err := common.ResolveRequestID(ctx, req.RequestId)
+	if err != nil {
+		response.Fail(ctx, nil, err.Error())
+		return
+	}
+	role.RequestId = common.RequestIDPtr(requestID)
 
 	// 创建角色
-	err = rc.RoleRepository.CreateRole(role)
+	duplicate, err := rc.RoleRepository.CreateRole(role)
 	if err != nil {
-		response.FailErr(ctx, nil, "创建角色失败", err)
+		handleWriteError(ctx, "创建角色失败", err)
+		return
+	}
+	if duplicate {
+		response.Duplicate(ctx, gin.H{"roleId": role.ID}, msgCreateDuplicate)
 		return
 	}
 	response.Success(ctx, nil, "创建角色成功")
@@ -121,7 +131,7 @@ func (rc *RoleController) CreateRole(ctx *gin.Context) {
  * @return void
  */
 func (rc *RoleController) UpdateRoleById(ctx *gin.Context) {
-	var req vo.CreateRoleRequest
+	var req vo.UpdateRoleRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
 		response.Fail(ctx, nil, common.ValidationErrString(err))
@@ -135,6 +145,9 @@ func (rc *RoleController) UpdateRoleById(ctx *gin.Context) {
 	roleId := strings.TrimSpace(ctx.Param("roleId"))
 	if roleId == "" {
 		response.Fail(ctx, nil, "角色ID不正确")
+		return
+	}
+	if !requireVersion(ctx, req.Version) {
 		return
 	}
 
@@ -178,9 +191,13 @@ func (rc *RoleController) UpdateRoleById(ctx *gin.Context) {
 	}
 
 	// 更新角色
-	err = rc.RoleRepository.UpdateRoleById(roleId, role)
+	duplicate, err := rc.RoleRepository.UpdateRoleById(roleId, req.Version, role)
 	if err != nil {
-		response.FailErr(ctx, nil, "更新角色失败", err)
+		handleWriteError(ctx, "更新角色失败", err)
+		return
+	}
+	if duplicate {
+		response.Duplicate(ctx, nil, msgUpdateDuplicate)
 		return
 	}
 
@@ -224,6 +241,9 @@ func (rc *RoleController) UpdateRoleMenusById(ctx *gin.Context) {
 	roleId := strings.TrimSpace(ctx.Param("roleId"))
 	if roleId == "" {
 		response.Fail(ctx, nil, "角色ID不正确")
+		return
+	}
+	if !requireVersion(ctx, req.Version) {
 		return
 	}
 	// 根据path中的角色ID获取该角色信息
@@ -309,9 +329,13 @@ func (rc *RoleController) UpdateRoleMenusById(ctx *gin.Context) {
 
 	roles[0].Menus = reqMenus
 
-	err = rc.RoleRepository.UpdateRoleMenus(roles[0])
+	duplicate, err := rc.RoleRepository.UpdateRoleMenus(roles[0], req.Version)
 	if err != nil {
-		response.FailErr(ctx, nil, "更新角色的权限菜单失败", err)
+		handleWriteError(ctx, "更新角色的权限菜单失败", err)
+		return
+	}
+	if duplicate {
+		response.Duplicate(ctx, nil, msgUpdateDuplicate)
 		return
 	}
 

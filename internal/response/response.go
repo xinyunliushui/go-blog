@@ -41,6 +41,26 @@ func Success(c *gin.Context, data interface{}, message string) {
 	Response(c, http.StatusOK, 200, data, message)
 }
 
+/** 返回前端-重复请求（HTTP 200，业务码 200，避免客户端误判为失败）
+ * @param c *gin.Context 上下文
+ * @param data interface{} 响应数据（通常为已存在资源）
+ * @param message string 响应消息
+ * @return void
+ */
+func Duplicate(c *gin.Context, data interface{}, message string) {
+	Response(c, http.StatusOK, 200, data, message)
+}
+
+/** 返回前端-乐观锁冲突（HTTP 409，业务码 409）
+ * @param c *gin.Context 上下文
+ * @param data interface{} 响应数据（可选携带当前 version）
+ * @param message string 响应消息
+ * @return void
+ */
+func Conflict(c *gin.Context, data interface{}, message string) {
+	Response(c, http.StatusConflict, 409, data, message)
+}
+
 /** 返回前端-失败
  * @param c *gin.Context 上下文
  * @param data interface{} 响应数据

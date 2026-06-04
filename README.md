@@ -151,14 +151,14 @@ go run .\main.go
 
 ## Goose（MySQL 迁移）
 - 迁移脚本目录：`migrations/`，文件命名 `YYYYMMDDxxxx_描述.sql`，使用 `-- +goose Up` / `-- +goose Down` 分段。
-- **开发环境**（`APP_ENV=dev`，默认）：启动时由 GORM `AutoMigrate` 按模型补齐表结构，便于本地迭代。
-- **测试 / 生产环境**：进程启动不执行 goose；发版或部署前需用 goose CLI 手动执行 `migrations/` 脚本。
+- **开发/测试体验环境**：启动时由 GORM `AutoMigrate` 按模型补齐表结构，便于本地迭代和快速体验。
+- **生产环境**：进程启动不执行 goose；发版或部署前需用 goose CLI 手动执行 `migrations/` 脚本。
 ``` shell
 # 安装 goose CLI
 go install github.com/pressly/goose/v3/cmd/goose@latest
 
 # 在项目根目录执行（DSN 与 config 中 mysql 一致，按实际替换）
-goose -dir migrations mysql "user:password@tcp(host:3306)/go_blog?charset=utf8mb4&parseTime=True&loc=Local" up
+goose -dir migrations mysql "root:blogY1Jo)%@tcp(localhost:3306)/go_blog?charset=utf8mb4&parseTime=True&loc=Local" up
 
 # 查看迁移状态 / 回滚上一版
 goose -dir migrations mysql "<dsn>" status
@@ -180,6 +180,8 @@ goose -dir migrations mysql "<dsn>" down
 - 监听退出信号，按 HTTP → 补偿重试 → MQ 主消费 / DLQ 消费顺序优雅停机并释放连接。
 - MQ 推送或消费失败时写入 `blog_mq_compensation` 补偿表，后台定时重试（PUBLISH 补发 MQ，CONSUME 补写 ES/CH）。
 - 消费失败且补偿落库失败时，消息经 Broker 死信交换机进入 `go_blog_dlq`，由 DLQ 消费者再次尝试落补偿表。
+- 接口幂等：**创建类接口**由客户端传 `requestId`（请求体优先，其次请求头 `X-Idempotency-Key` / `X-Request-Id`），落库 `request_id` 唯一索引；重复提交会先触发 request_id 唯一冲突；捕获 1062 后，若库中已有记录的业务字段与本次请求一致，则视为幂等重复并返回成功；否则返回 409。**更新累接口**须带列表返回的 `version`；影响行数为 0 时再比对当前库内数据是否与本次提交一致，一致则幂等成功，不一致则乐观锁冲突。
+
 
 ## 特殊说明
 ### MQ 推送 / 消费失败补偿

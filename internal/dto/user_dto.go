@@ -18,6 +18,7 @@ type UserInfoDto struct {
 	Nickname     string   `json:"nickname"`
 	Introduction string   `json:"introduction"`
 	RoleIds      []string `json:"roleIds"`
+	Version      uint     `json:"version"`
 }
 
 /** 将用户转换为当前用户信息DTO
@@ -38,6 +39,7 @@ func ToUserInfoDto(user model.User) UserInfoDto {
 		Nickname:     user.Nickname,
 		Introduction: user.Introduction,
 		RoleIds:      roleIds,
+		Version:      user.Version,
 	}
 }
 
@@ -52,6 +54,7 @@ type UsersDto struct {
 	Status       uint     `json:"status"`
 	Creator      string   `json:"creator"`
 	RoleIds      []string `json:"roleIds"`
+	Version      uint     `json:"version"`
 }
 
 /** 将用户列表转换为用户DTO列表
@@ -70,6 +73,7 @@ func ToUsersDto(userList []model.User) []UsersDto {
 			Introduction: user.Introduction,
 			Status:       user.Status,
 			Creator:      user.Creator,
+			Version:      user.Version,
 		}
 		roleIds := make([]string, 0)
 		for _, role := range user.Roles {

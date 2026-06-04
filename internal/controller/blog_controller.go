@@ -75,11 +75,11 @@ func (bc *BlogController) GetBlogById(ctx *gin.Context) {
 		response.FailErr(ctx, nil, "获取文章详情失败", err)
 		return
 	}
-	response.Success(ctx, blog, "获取文章详情成功")
+	response.Success(ctx, dto.ToBlogDto(blog), "获取文章详情成功")
 }
 
 func (bc *BlogController) CreateBlog(ctx *gin.Context) {
-	var req vo.CreateAndUpdateBlogRequest
+	var req vo.CreateBlogRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
 		response.Fail(ctx, nil, common.ValidationErrString(err))
@@ -97,7 +97,13 @@ func (bc *BlogController) CreateBlog(ctx *gin.Context) {
 		response.FailErr(ctx, nil, "获取当前用户信息失败", err)
 		return
 	}
+	requestID, err := common.ResolveRequestID(ctx, req.RequestId)
+	if err != nil {
+		response.Fail(ctx, nil, err.Error())
+		return
+	}
 	blog := &model.Blog{
+		UUIDModel:  model.UUIDModel{RequestId: common.RequestIDPtr(requestID)},
 		Title:      req.Title,
 		Content:    req.Content,
 		Summary:    req.Summary,
@@ -106,16 +112,19 @@ func (bc *BlogController) CreateBlog(ctx *gin.Context) {
 		Tags:       utils.OptionalString(req.Tags),
 		Author:     ctxUser.Username, // 文章作者
 	}
-	err = bc.BlogRepository.CreateBlog(blog)
+	duplicate, err := bc.BlogRepository.CreateBlog(blog)
 	if err != nil {
-		response.FailErr(ctx, nil, "创建文章失败", err)
+		handleWriteError(ctx, "创建文章失败", err)
+		return
+	}
+	if duplicate {
+		response.Duplicate(ctx, gin.H{"blogId": blog.ID}, msgCreateDuplicate)
 		return
 	}
 
 	if err := rabbitmq.PublishMessage(ctx.Request.Context(), config.Conf.Rabbitmq.QueueName, blog); err != nil {
 		common.LoggerFromGin(ctx).Errorf("[消息推送补偿] blog_id=%s RabbitMQ 首次投递失败，写入本地补偿表: %v", blog.ID, err)
 		compRepo := repository.NewMQCompensationRepository()
-		// 写入本地补偿表
 		if encErr := compRepo.EnqueueBlogPublish(blog, err.Error(), common.TraceIDFromGin(ctx)); encErr != nil {
 			common.LoggerFromGin(ctx).Errorf("[消息推送补偿] blog_id=%s 补偿表写入失败（需人工核对 MySQL 与 ES/CH）: %v", blog.ID, encErr)
 			response.Fail(ctx, gin.H{"blogId": blog.ID}, "文章已保存，但消息队列不可用且补偿记录失败，请联系管理员")
@@ -145,18 +154,27 @@ func (bc *BlogController) UpdateBlogPublishStatusById(ctx *gin.Context) {
 		response.Fail(ctx, nil, "文章ID不正确")
 		return
 	}
+	if !requireVersion(ctx, req.Version) {
+		return
+	}
 	var publishedAt *time.Time
 	if req.Status == 2 {
 		now := time.Now()
 		publishedAt = &now
 	}
-	err := bc.BlogRepository.UpdateBlogPublishStatusById(blogId, req.Status, publishedAt)
+	duplicate, err := bc.BlogRepository.UpdateBlogPublishStatusById(blogId, req.Version, req.Status, publishedAt)
 	// 更新 ES 发布状态
-	if err := repository.UpdateBlogPublishStatusInES(blogId, req.Status, publishedAt); err != nil {
-		common.Log.Errorf("blog_id=%s 更新 ES 发布状态失败: %v", blogId, err)
+	if err == nil && !duplicate {
+		if err := repository.UpdateBlogPublishStatusInES(blogId, req.Status, publishedAt); err != nil {
+			common.Log.Errorf("blog_id=%s 更新 ES 发布状态失败: %v", blogId, err)
+		}
 	}
 	if err != nil {
-		response.FailErr(ctx, nil, "更新文章状态失败", err)
+		handleWriteError(ctx, "更新文章状态失败", err)
+		return
+	}
+	if duplicate {
+		response.Duplicate(ctx, nil, msgUpdateDuplicate)
 		return
 	}
 	response.Success(ctx, nil, "更新文章状态成功")
@@ -164,7 +182,7 @@ func (bc *BlogController) UpdateBlogPublishStatusById(ctx *gin.Context) {
 
 // 更新文章
 func (bc *BlogController) UpdateBlogById(ctx *gin.Context) {
-	var req vo.CreateAndUpdateBlogRequest
+	var req vo.UpdateBlogRequest
 	// 参数绑定
 	if err := ctx.ShouldBind(&req); err != nil {
 		response.Fail(ctx, nil, common.ValidationErrString(err))
@@ -180,6 +198,9 @@ func (bc *BlogController) UpdateBlogById(ctx *gin.Context) {
 		response.Fail(ctx, nil, "文章ID不正确")
 		return
 	}
+	if !requireVersion(ctx, req.Version) {
+		return
+	}
 	blog := &model.Blog{
 		Title:      req.Title,
 		Content:    req.Content,
@@ -188,9 +209,13 @@ func (bc *BlogController) UpdateBlogById(ctx *gin.Context) {
 		Category:   utils.OptionalString(req.Category),
 		Tags:       utils.OptionalString(req.Tags),
 	}
-	err := bc.BlogRepository.UpdateBlogById(blogId, blog)
+	duplicate, err := bc.BlogRepository.UpdateBlogById(blogId, req.Version, blog)
 	if err != nil {
-		response.FailErr(ctx, nil, "更新文章失败", err)
+		handleWriteError(ctx, "更新文章失败", err)
+		return
+	}
+	if duplicate {
+		response.Duplicate(ctx, nil, msgUpdateDuplicate)
 		return
 	}
 	if err := repository.UpdateBlogFieldsInESByBlog(blogId, blog); err != nil {

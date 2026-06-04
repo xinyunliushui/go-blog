@@ -18,8 +18,8 @@ import (
 type IMenuRepository interface {
 	GetMenus() ([]*model.Menu, error)                             // 获取菜单列表
 	GetMenuTree() ([]dto.MenuDto, error)                          // 获取菜单树
-	CreateMenu(menu *model.Menu) error                            // 创建菜单
-	UpdateMenuById(menuId string, menu *model.Menu) error         // 更新菜单
+	CreateMenu(menu *model.Menu) (duplicate bool, err error)                            // 创建菜单
+	UpdateMenuById(menuId string, version uint, menu *model.Menu) (duplicate bool, err error) // 更新菜单
 	GetUserMenuTreeByUserId(userId string) ([]dto.MenuDto, error) // 根据用户ID获取用户的权限(可访问)菜单树
 	GetUserMenusByUserId(userId string) ([]*model.Menu, error)    // 根据用户ID获取用户的权限(可访问)菜单列表
 }
@@ -136,21 +136,72 @@ func (mr *MenuRepository) GetMenuTree() ([]dto.MenuDto, error) {
 
 /** 创建菜单
  * @param menu *model.Menu 菜单
- * @return error
+ * @return duplicate, error
  */
-func (mr *MenuRepository) CreateMenu(menu *model.Menu) error {
+func (mr *MenuRepository) CreateMenu(menu *model.Menu) (bool, error) {
+	intended := *menu
 	err := common.DB.Create(menu).Error
-	return err
+	requestID := ""
+	if menu.RequestId != nil {
+		requestID = *menu.RequestId
+	}
+	return handleCreateIdempotency(common.DB, requestID, err, func() (bool, error) {
+		var existing model.Menu
+		if loadErr := common.DB.Where("request_id = ?", requestID).First(&existing).Error; loadErr != nil {
+			return false, err
+		}
+		if !menuFieldsMatch(&existing, &intended) {
+			return false, nil
+		}
+		*menu = existing
+		return true, nil
+	})
+}
+
+func menuFieldsMatch(current, target *model.Menu) bool {
+	return current.Name == target.Name &&
+		current.Title == target.Title &&
+		common.StringPtrEqual(current.Icon, target.Icon) &&
+		current.Path == target.Path &&
+		common.StringPtrEqual(current.Redirect, target.Redirect) &&
+		current.Sort == target.Sort &&
+		current.Status == target.Status &&
+		current.Type == target.Type &&
+		common.StringPtrEqual(current.ParentId, target.ParentId)
 }
 
 /** 通过ID更新菜单
  * @param menuId string 菜单ID
+ * @param version 乐观锁版本号
  * @param menu *model.Menu 菜单
- * @return error
+ * @return duplicate, error
  */
-func (mr *MenuRepository) UpdateMenuById(menuId string, menu *model.Menu) error {
-	err := common.DB.Model(&model.Menu{}).Where("id = ?", menuId).Omit("ID").Updates(menu).Error
-	return err
+func (mr *MenuRepository) UpdateMenuById(menuId string, version uint, menu *model.Menu) (bool, error) {
+	updates := map[string]interface{}{
+		"name":     menu.Name,
+		"title":    menu.Title,
+		"icon":     menu.Icon,
+		"path":     menu.Path,
+		"redirect": menu.Redirect,
+		"sort":     menu.Sort,
+		"status":   menu.Status,
+		"type":     menu.Type,
+		"parent_id": menu.ParentId,
+		"creator":  menu.Creator,
+		"version":  version + 1,
+	}
+	result := common.DB.Model(&model.Menu{}).Where("id = ? AND version = ?", menuId, version).Updates(updates)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	if result.RowsAffected > 0 {
+		return false, nil
+	}
+	var current model.Menu
+	if err := common.DB.Where("id = ?", menuId).First(&current).Error; err != nil {
+		return false, err
+	}
+	return applyOptimisticLockResult(menuFieldsMatch(&current, menu), result.RowsAffected, nil)
 }
 
 /** 判断菜单是否属于父菜单

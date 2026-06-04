@@ -24,6 +24,27 @@ type BlogDto struct {
 	Status      uint       `json:"status"`
 	Author      string     `json:"author"`
 	PublishedAt *time.Time `json:"publishedAt"`
+	Version     uint       `json:"version"`
+}
+
+/** 将文章转换为文章DTO
+ * @param blog 文章
+ * @return BlogDto
+ */
+func ToBlogDto(blog model.Blog) BlogDto {
+	return BlogDto{
+		ID:          blog.ID,
+		Title:       blog.Title,
+		Content:     blog.Content,
+		Summary:     blog.Summary,
+		CoverImage:  blog.CoverImage,
+		Category:    blog.Category,
+		Tags:        blog.Tags,
+		Status:      blog.Status,
+		Author:      blog.Author,
+		PublishedAt: blog.PublishedAt,
+		Version:     blog.Version,
+	}
 }
 
 /** 将文章列表转换为文章DTO列表
@@ -44,6 +65,7 @@ func ToBlogsDto(blogs []model.Blog) []BlogDto {
 			Status:      blog.Status,
 			Author:      blog.Author,
 			PublishedAt: blog.PublishedAt,
+			Version:     blog.Version,
 		})
 	}
 	return blogDtos
@@ -64,6 +86,7 @@ type BlogPostSource struct {
 	Status      uint       `json:"status"`
 	Author      string     `json:"author"`
 	PublishedAt *time.Time `json:"published_at"`
+	Version     uint       `json:"version"`
 	CreatedAt   *time.Time `json:"created_at"`
 	UpdatedAt   *time.Time `json:"updated_at"`
 	Highlight   struct {

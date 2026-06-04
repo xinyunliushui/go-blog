@@ -22,6 +22,7 @@ type RoleDto struct {
 	Creator     string    `json:"creator"`
 	CreatedAt   string    `json:"createdAt"` // 年月日 时分秒，如 2006-01-02 15:04:05
 	UpdatedAt   string    `json:"updatedAt"`
+	Version     uint      `json:"version"`
 	Menus       []MenuDto `json:"menus"`
 }
 
@@ -38,12 +39,13 @@ func ToRolesDto(roleList []*model.Role) []RoleDto {
 			ID:          role.ID,
 			Name:        role.Name,
 			Keyword:     role.Keyword,
-			Description: *role.Desc,
+			Description: PtrStr(role.Desc),
 			Status:      role.Status,
 			Sort:        role.Sort,
 			Creator:     role.Creator,
 			CreatedAt:   role.CreatedAt.Format(roleDateTimeLayout),
 			UpdatedAt:   role.UpdatedAt.Format(roleDateTimeLayout),
+			Version:     role.Version,
 			Menus:       ToMenuListDto(role.Menus),
 		}
 		roles = append(roles, roleDto)

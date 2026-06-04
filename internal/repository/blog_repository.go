@@ -26,9 +26,9 @@ import (
 type IBlogRepository interface {
 	GetBlogs(req *vo.GetBlogListRequest) ([]model.Blog, int64, error)                      // 获取文章列表
 	GetBlogById(blogId string) (model.Blog, error)                                         // 根据ID获取文章详情
-	CreateBlog(blog *model.Blog) error                                                     // 创建文章
-	UpdateBlogPublishStatusById(blogId string, status uint, publishedAt *time.Time) error  // 更新文章状态
-	UpdateBlogById(blogId string, blog *model.Blog) error                                  // 更新文章
+	CreateBlog(blog *model.Blog) (duplicate bool, err error)                               // 创建文章
+	UpdateBlogPublishStatusById(blogId string, version uint, status uint, publishedAt *time.Time) (duplicate bool, err error) // 更新文章状态
+	UpdateBlogById(blogId string, version uint, blog *model.Blog) (duplicate bool, err error) // 更新文章
 	SearchBlogs(req *vo.SearchBlogRequest, ctx *gin.Context) (*dto.SearchResultDTO, error) // 搜索文章
 }
 
@@ -68,11 +68,49 @@ func (*BlogRepository) GetBlogs(req *vo.GetBlogListRequest) ([]model.Blog, int64
 
 /** 创建文章
  * @param blog 文章信息
- * @return error
+ * @return duplicate, error
  */
-func (*BlogRepository) CreateBlog(blog *model.Blog) error {
+func (*BlogRepository) CreateBlog(blog *model.Blog) (bool, error) {
+	intended := *blog
 	err := common.DB.Create(blog).Error
-	return err
+	requestID := ""
+	if blog.RequestId != nil {
+		requestID = *blog.RequestId
+	}
+	return handleCreateIdempotency(common.DB, requestID, err, func() (bool, error) {
+		var existing model.Blog
+		if loadErr := common.DB.Where("request_id = ?", requestID).First(&existing).Error; loadErr != nil {
+			return false, err
+		}
+		if !blogCreateFieldsMatch(&existing, &intended) {
+			return false, nil
+		}
+		*blog = existing
+		return true, nil
+	})
+}
+
+func blogFieldsMatch(current, target *model.Blog) bool {
+	return current.Title == target.Title &&
+		current.Content == target.Content &&
+		current.Summary == target.Summary &&
+		current.CoverImage == target.CoverImage &&
+		common.StringPtrEqual(current.Category, target.Category) &&
+		common.StringPtrEqual(current.Tags, target.Tags)
+}
+
+func blogCreateFieldsMatch(current, target *model.Blog) bool {
+	return blogFieldsMatch(current, target) && current.Author == target.Author
+}
+
+func blogPublishStatusMatch(current *model.Blog, status uint, publishedAt *time.Time) bool {
+	if current.Status != status {
+		return false
+	}
+	if status != model.BlogStatusPublished {
+		return true
+	}
+	return current.PublishedAt != nil
 }
 
 /** 根据ID获取文章详情
@@ -87,30 +125,65 @@ func (*BlogRepository) GetBlogById(blogId string) (model.Blog, error) {
 
 /** 更新文章状态和发布时间
  * @param blogId 文章ID
+ * @param version 乐观锁版本号
  * @param status 文章状态
  * @param publishedAt 发布时间
- * @return error
+ * @return duplicate, error
  */
-func (*BlogRepository) UpdateBlogPublishStatusById(blogId string, status uint, publishedAt *time.Time) error {
+func (*BlogRepository) UpdateBlogPublishStatusById(blogId string, version uint, status uint, publishedAt *time.Time) (bool, error) {
 	var publishedAtValue interface{}
 	if publishedAt == nil {
 		publishedAtValue = nil
 	} else {
 		publishedAtValue = *publishedAt
 	}
-	blog := map[string]interface{}{"status": status, "published_at": publishedAtValue}
-	err := common.DB.Model(&model.Blog{}).Where("id = ?", blogId).Updates(blog).Error
-	return err
+	updates := map[string]interface{}{
+		"status":       status,
+		"published_at": publishedAtValue,
+		"version":      version + 1,
+	}
+	result := common.DB.Model(&model.Blog{}).Where("id = ? AND version = ?", blogId, version).Updates(updates)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	if result.RowsAffected > 0 {
+		return false, nil
+	}
+	var current model.Blog
+	if err := common.DB.Where("id = ?", blogId).First(&current).Error; err != nil {
+		return false, err
+	}
+	return applyOptimisticLockResult(blogPublishStatusMatch(&current, status, publishedAt), result.RowsAffected, nil)
 }
 
 /** 更新文章
  * @param blogId 文章ID
+ * @param version 乐观锁版本号
  * @param blog 文章信息
- * @return error
+ * @return duplicate, error
  */
-func (*BlogRepository) UpdateBlogById(blogId string, blog *model.Blog) error {
-	err := common.DB.Model(&model.Blog{}).Where("id = ?", blogId).Omit("ID").Updates(blog).Error
-	return err
+func (*BlogRepository) UpdateBlogById(blogId string, version uint, blog *model.Blog) (bool, error) {
+	updates := map[string]interface{}{
+		"title":       blog.Title,
+		"content":     blog.Content,
+		"summary":     blog.Summary,
+		"cover_image": blog.CoverImage,
+		"category":    blog.Category,
+		"tags":        blog.Tags,
+		"version":     version + 1,
+	}
+	result := common.DB.Model(&model.Blog{}).Where("id = ? AND version = ?", blogId, version).Updates(updates)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	if result.RowsAffected > 0 {
+		return false, nil
+	}
+	var current model.Blog
+	if err := common.DB.Where("id = ?", blogId).First(&current).Error; err != nil {
+		return false, err
+	}
+	return applyOptimisticLockResult(blogFieldsMatch(&current, blog), result.RowsAffected, nil)
 }
 
 /** 搜索文章
@@ -182,6 +255,8 @@ func (*BlogRepository) SearchBlogs(req *vo.SearchBlogRequest, ctx *gin.Context) 
 		result.Hits = append(result.Hits, post)
 	}
 
+	enrichBlogSearchVersions(result.Hits)
+
 	// 5. 添加拼写建议
 	if len(esResp.Suggest.SpellCheck) > 0 &&
 		len(esResp.Suggest.SpellCheck[0].Options) > 0 {
@@ -189,4 +264,50 @@ func (*BlogRepository) SearchBlogs(req *vo.SearchBlogRequest, ctx *gin.Context) 
 	}
 
 	return result, nil
+}
+
+// enrichBlogSearchVersions 为 ES 搜索结果补全 MySQL 中的乐观锁 version（ES 索引不含该字段）。
+func enrichBlogSearchVersions(hits []dto.BlogPostSource) {
+	if len(hits) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(hits))
+	seen := make(map[string]struct{}, len(hits))
+	for _, h := range hits {
+		id := strings.TrimSpace(h.ID)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return
+	}
+	var rows []struct {
+		ID      string `gorm:"column:id"`
+		Version uint   `gorm:"column:version"`
+	}
+	if err := common.DB.Model(&model.Blog{}).Select("id", "version").Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		common.Log.Errorf("补全搜索结果的 version 失败: %v", err)
+		return
+	}
+	verByID := make(map[string]uint, len(rows))
+	for _, r := range rows {
+		v := r.Version
+		if v < 1 {
+			v = 1
+		}
+		verByID[r.ID] = v
+	}
+	for i := range hits {
+		if v, ok := verByID[hits[i].ID]; ok {
+			hits[i].Version = v
+		} else if hits[i].Version < 1 {
+			hits[i].Version = 1
+		}
+	}
 }

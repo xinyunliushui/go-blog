@@ -20,6 +20,8 @@ type UUIDModel struct {
 	CreatedAt time.Time      `json:"createdAt"`
 	UpdatedAt time.Time      `json:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index"`
+	Version   uint           `gorm:"not null;default:1;comment:'乐观锁版本号'" json:"version"`
+	RequestId *string        `gorm:"type:varchar(64);uniqueIndex;comment:'创建幂等请求ID'" json:"requestId,omitempty"`
 }
 
 // EnsureUUID 若 id 为空则生成 UUID（供各模型 BeforeCreate 调用）。
